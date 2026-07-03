@@ -1,0 +1,6 @@
+{
+  "name": "QLCV_PQG Next",
+  "description": "Hệ thống quản lý công việc, biên tập nội dung, quản lý tài liệu và trợ lý AI nội bộ.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
