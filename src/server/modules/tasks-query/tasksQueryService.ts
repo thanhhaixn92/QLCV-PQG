@@ -9,9 +9,6 @@ export const tasksQueryService = {
   async getTasks(req: AppRequest): Promise<TaskListResult> {
     // 1. Validate query parameters using Zod
     const parsedQuery = taskListQuerySchema.parse(req.query);
-    if (req.query.forceMissingIndexError) {
-      (parsedQuery as any).forceMissingIndexError = req.query.forceMissingIndexError === "true";
-    }
 
     // 2. Construct security context
     const actorUid = req.user?.uid || "anonymous";

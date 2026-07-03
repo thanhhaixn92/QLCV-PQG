@@ -194,25 +194,19 @@ async function main() {
     }
     console.log("   [OK] Chặn truy vấn trực tiếp UID người khác của Operator thành công (HTTP 403).");
 
-    // 6. Xác minh xử lý lỗi thiếu composite index (DEPENDENCY_UNAVAILABLE) một cách độc lập
-    console.log("6. Gửi request HTTP cố tình thiếu composite index (status=todo&priority=high)...");
-    const indexErrorRes: Response = await request(app)
-      .get("/api/modules/tasks-query/tasks?status=todo&priority=high&forceMissingIndexError=true")
+    // 6. Xác minh truy vấn sử dụng chỉ mục composite (status=todo&priority=high)
+    console.log("6. Gửi request HTTP truy vấn sử dụng chỉ mục composite (status=todo&priority=high)...");
+    const compositeIndexRes: Response = await request(app)
+      .get("/api/modules/tasks-query/tasks?status=todo&priority=high")
       .set("Authorization", "Bearer mock-admin")
-      .expect(503);
+      .expect(200);
 
-    if (indexErrorRes.body.error?.code !== "DEPENDENCY_UNAVAILABLE") {
-      console.error(`Lỗi: Kỳ vọng mã lỗi DEPENDENCY_UNAVAILABLE, nhận được: ${indexErrorRes.body.error?.code}`);
+    const compositeIndexBody = compositeIndexRes.body as TasksResponse;
+    if (compositeIndexBody.success !== true) {
+      console.error("Lỗi: Truy vấn với chỉ mục composite thất bại.");
       process.exit(1);
     }
-
-    // Đảm bảo không rò rỉ URL nhạy cảm của Firebase Console
-    const errorBodyString = JSON.stringify(indexErrorRes.body);
-    if (errorBodyString.includes("https://console.firebase.google.com")) {
-      console.error("Lỗi bảo mật: URL Firebase Console nhạy cảm bị rò rỉ qua response API!");
-      process.exit(1);
-    }
-    console.log("   [OK] Xác nhận lỗi chỉ mục được ánh xạ thành 503 DEPENDENCY_UNAVAILABLE và che giấu hoàn toàn URL nhạy cảm.");
+    console.log("   [OK] Xác nhận truy vấn sử dụng chỉ mục composite thành công (HTTP 200).");
 
     console.log("\n🎉 LIVE HTTP INTEGRATION VERIFICATION PASSED SUCCESSFULLY!");
     process.exit(0);
