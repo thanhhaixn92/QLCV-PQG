@@ -580,15 +580,36 @@ async function runAllTests() {
 
   // TC-HARD-03: Client mock auth không bật khi VITE_ALLOW_MOCK_AUTH=false.
   try {
-    const { isMockAuthAllowed } = await import("../client/infrastructure/firebase/firebaseClient");
-    const env = (typeof import.meta !== "undefined" && import.meta.env) || (process.env as any) || {};
-    const expected = env.DEV === true || env.VITE_ALLOW_MOCK_AUTH === "true";
-    assert(
-      isMockAuthAllowed === expected,
-      "TC-HARD-03: Client mock auth không được phép hoạt động khi VITE_ALLOW_MOCK_AUTH=false."
+    const { isMockAuthAllowed, checkMockAuthAllowed } = await import("../client/infrastructure/firebase/firebaseClient");
+    
+    const tcMock01 = checkMockAuthAllowed(true, "true");
+    assert(tcMock01 === true, "TC-MOCK-01: DEV=true và VITE_ALLOW_MOCK_AUTH=true phải kích hoạt mock auth.");
+    console.log("   [PASSED] TC-MOCK-01: DEV=true và VITE_ALLOW_MOCK_AUTH=true -> mock auth được bật.");
+
+    const tcMock02 = checkMockAuthAllowed(true, "false");
+    assert(tcMock02 === false, "TC-MOCK-02: DEV=true và VITE_ALLOW_MOCK_AUTH=false phải vô hiệu hóa mock auth.");
+    console.log("   [PASSED] TC-MOCK-02: DEV=true và VITE_ALLOW_MOCK_AUTH=false -> mock auth bị tắt.");
+
+    const tcMock03 = checkMockAuthAllowed(false, "true");
+    assert(tcMock03 === false, "TC-MOCK-03: DEV=false và VITE_ALLOW_MOCK_AUTH=true phải vô hiệu hóa mock auth.");
+    console.log("   [PASSED] TC-MOCK-03: DEV=false và VITE_ALLOW_MOCK_AUTH=true -> mock auth bị tắt.");
+
+    const tcMock04 = checkMockAuthAllowed(false, "false");
+    assert(tcMock04 === false, "TC-MOCK-04: DEV=false và VITE_ALLOW_MOCK_AUTH=false phải vô hiệu hóa mock auth.");
+    console.log("   [PASSED] TC-MOCK-04: DEV=false và VITE_ALLOW_MOCK_AUTH=false -> mock auth bị tắt.");
+
+    const testMetaEnv = (typeof import.meta !== "undefined" && import.meta.env) || {};
+    const actualExpected = checkMockAuthAllowed(
+      testMetaEnv.DEV as boolean | undefined,
+      testMetaEnv.VITE_ALLOW_MOCK_AUTH as string | undefined
     );
+    assert(
+      isMockAuthAllowed === actualExpected,
+      "TC-HARD-03: Giá trị isMockAuthAllowed thực tế không khớp với cấu hình môi trường hiện tại."
+    );
+    console.log("   [PASSED] TC-HARD-03: Client mock auth khớp chính xác biểu thức logic cấu hình.");
   } catch (error) {
-    assert(false, `TC-HARD-03 Thất bại: ${error}`);
+    assert(false, `TC-HARD-03 / TC-MOCK Thất bại: ${error}`);
   }
 
   // TC-HARD-04: ApiClient không tự gửi mock-admin.

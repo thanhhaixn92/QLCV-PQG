@@ -1,20 +1,27 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
 
-const env = (typeof import.meta !== "undefined" && import.meta.env) || (process.env as any) || {};
+const env = (import.meta.env as unknown as Record<string, string | boolean | undefined>) || {};
 
 const firebaseConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY,
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: env.VITE_FIREBASE_APP_ID,
-  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID,
+  apiKey: env.VITE_FIREBASE_API_KEY as string | undefined,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
+  projectId: env.VITE_FIREBASE_PROJECT_ID as string | undefined,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
+  appId: env.VITE_FIREBASE_APP_ID as string | undefined,
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID as string | undefined,
+};
+
+export const checkMockAuthAllowed = (dev: boolean | undefined, allowMockAuth: string | undefined): boolean => {
+  return dev === true && allowMockAuth === "true";
 };
 
 const hasClientConfig = !!env.VITE_FIREBASE_API_KEY;
-const isMockAuthAllowed = env.DEV === true || env.VITE_ALLOW_MOCK_AUTH === "true";
+const isMockAuthAllowed = checkMockAuthAllowed(
+  env.DEV as boolean | undefined,
+  env.VITE_ALLOW_MOCK_AUTH as string | undefined
+);
 
 let app = null;
 let auth: Auth | null = null;
