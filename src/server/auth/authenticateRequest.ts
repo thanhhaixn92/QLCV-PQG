@@ -50,12 +50,16 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
         );
       }
 
-      const rolePart = token.substring(5); // mock-admin, mock-viewer, vv.
+      const rawPart = token.substring(5); // mock-admin, mock-viewer, vv. hoặc mock-operator:admin-uid-h1
+      const colonIndex = rawPart.indexOf(":");
+      const rolePart = colonIndex !== -1 ? rawPart.substring(0, colonIndex) : rawPart;
+      const customUid = colonIndex !== -1 ? rawPart.substring(colonIndex + 1) : undefined;
+
       const validRoles = ["admin", "manager", "editor", "operator", "viewer"];
       const role = validRoles.includes(rolePart) ? rolePart : "viewer";
 
       req.user = {
-        uid: `mock-uid-${role}`,
+        uid: customUid || `mock-uid-${role}`,
         email: `${role}@qlcv.local`,
         emailVerified: true,
         role: role as any,

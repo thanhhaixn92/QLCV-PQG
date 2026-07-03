@@ -23,7 +23,7 @@ export function getTaskQueryRepository(): TaskQueryRepository {
   const isFirebaseReady =
     fbStatus.status === "ready" || fbStatus.status === "initialized";
 
-  const source = process.env.TASKS_QUERY_SOURCE;
+  const source = process.env.TASKS_QUERY_SOURCE?.trim() || undefined;
   const isProduction = process.env.NODE_ENV === "production" || serverConfig.nodeEnv === "production";
 
   if (source !== undefined) {
@@ -64,18 +64,11 @@ export function getTaskQueryRepository(): TaskQueryRepository {
     return activeRepo;
   }
 
-  // Outside production (development/test):
-  if (collectionName && collectionName.trim() && isFirebaseReady) {
-    activeRepo = new FirestoreTaskQueryRepository();
-    logger.info(
-      `TaskQueryRepository: Kích hoạt FirestoreTaskQueryRepository sử dụng collection '${collectionName.trim()}'.`
-    );
-  } else {
-    activeRepo = new FixtureTaskQueryRepository();
-    logger.info(
-      "TaskQueryRepository: Sử dụng FixtureTaskQueryRepository làm dữ liệu công việc mặc định."
-    );
-  }
+  // Outside production (development/test): default must be fixture
+  activeRepo = new FixtureTaskQueryRepository();
+  logger.info(
+    "TaskQueryRepository: Sử dụng FixtureTaskQueryRepository làm dữ liệu công việc mặc định (ngoài production)."
+  );
 
   return activeRepo;
 }

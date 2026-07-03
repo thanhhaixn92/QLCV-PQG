@@ -2025,6 +2025,12 @@ async function runAllTests() {
     const repoFixture = getTaskQueryRepository();
     assert(repoFixture instanceof FixtureTaskQueryRepository, "TC-G5-01: TASKS_QUERY_SOURCE=fixture phải trả về Fixture repository.");
 
+    // 1b. Empty source configuration treated as undefined (defaults to fixture outside production)
+    process.env.TASKS_QUERY_SOURCE = "   ";
+    resetTaskQueryRepository();
+    const repoEmpty = getTaskQueryRepository();
+    assert(repoEmpty instanceof FixtureTaskQueryRepository, "TC-G5-01: TASKS_QUERY_SOURCE chuỗi rỗng phải coi là chưa cấu hình và trả về Fixture.");
+
     // 2. Invalid source configuration throws error
     process.env.TASKS_QUERY_SOURCE = "invalid_source";
     resetTaskQueryRepository();
@@ -2108,6 +2114,18 @@ async function runAllTests() {
     };
     const mappedSeconds = taskDocumentMapper.map("id-sec", docWithRawSeconds, "firestore");
     assert(mappedSeconds?.createdAt?.startsWith("2026-06-30T12:00:00"), `TC-G5-03: Phải xử lý raw _seconds thành công. Nhận được: ${mappedSeconds?.createdAt}`);
+    
+    // 4. Malformed timestamps must not crash, should return null or safe fallback
+    const docWithMalformedTs = {
+      title: "Malformed Ts Task",
+      dueAt: { toDate: () => { throw new Error("bad toDate"); } },
+      createdAt: { _seconds: "invalid_number_here" },
+      updatedAt: "invalid-date-string"
+    };
+    const mappedMalformed = taskDocumentMapper.map("id-malformed", docWithMalformedTs as any, "firestore");
+    assert(mappedMalformed !== null, "TC-G5-03: Mapper phải hoạt động ngay cả khi dữ liệu timestamp bị hỏng.");
+    assert(mappedMalformed?.dueAt === null, "TC-G5-03: toDate ném lỗi phải trả về dueAt = null.");
+    assert(typeof mappedMalformed?.createdAt === "string", "TC-G5-03: createdAt lỗi phải fallback sang thời gian hiện tại.");
 
     console.log("   [PASSED] TC-G5-03: Chuẩn hóa toàn diện các kiểu thời gian Firestore Timestamp sang ISO String.");
   } catch (error) {
@@ -2266,6 +2284,80 @@ async function runAllTests() {
     console.log("   [PASSED] TC-G5-06: Che giấu thông tin lỗi kỹ thuật (URL chỉ mục Firestore) thành công.");
   } catch (error) {
     assert(false, `TC-G5-06 Thất bại: ${error}`);
+  }
+
+  // TC-G5-07: Kiểm thử tích hợp HTTP End-to-End (G5.1 E2E)
+  console.log("\n[KIỂM THỬ G5.1: HTTP END-TO-END VERIFICATION]");
+  try {
+    const { createServer } = await import("../server/app/createServer");
+    const request = (await import("supertest")).default;
+
+    const originalSource = process.env.TASKS_QUERY_SOURCE;
+    process.env.TASKS_QUERY_SOURCE = "fixture";
+    
+    const { resetTaskQueryRepository } = await import("../server/modules/tasks-query/data/taskQueryRepository");
+    resetTaskQueryRepository();
+
+    const app = await createServer();
+
+    // 1. Admin qua HTTP
+    const adminRes = await request(app)
+      .get("/api/modules/tasks-query/tasks")
+      .set("Authorization", "Bearer mock-admin")
+      .expect(200);
+
+    assert(adminRes.body.success === true, "G5.1-HTTP: Response success phải là true.");
+    assert(typeof adminRes.body.requestId === "string", "G5.1-HTTP: Response phải có requestId.");
+    assert(adminRes.body.data.source === "fixture", "G5.1-HTTP: Source dữ liệu trong E2E test phải là fixture.");
+    assert(Array.isArray(adminRes.body.data.items), "G5.1-HTTP: data.items phải là danh sách.");
+    assert(adminRes.body.data.items.length > 0, "G5.1-HTTP: Admin phải nhìn thấy các tasks.");
+    
+    for (const task of adminRes.body.data.items) {
+      assert(!("seedKey" in task), "G5.1-HTTP: Không được để lộ seedKey trong dữ liệu trả về.");
+    }
+
+    // 2. Manager qua HTTP
+    // - phòng ban được phép
+    const managerAuthRes = await request(app)
+      .get("/api/modules/tasks-query/tasks?departmentId=dept-b")
+      .set("Authorization", "Bearer mock-manager")
+      .set("x-user-permissions", "tasks.department,tasks.read")
+      .set("x-user-departments", "dept-b")
+      .expect(200);
+
+    // - phòng ban khác bị chặn
+    const managerBlockedRes = await request(app)
+      .get("/api/modules/tasks-query/tasks?departmentId=dept-a")
+      .set("Authorization", "Bearer mock-manager")
+      .set("x-user-permissions", "tasks.department,tasks.read")
+      .set("x-user-departments", "dept-b")
+      .expect(403);
+    assert(managerBlockedRes.body.error?.code === "PERMISSION_DENIED", "G5.1-HTTP: Manager truy vấn phòng ban không được phép phải nhận lỗi PERMISSION_DENIED.");
+
+    // 3. Operator qua HTTP
+    // - operator với UID đúng (user-123)
+    const operatorAuthRes = await request(app)
+      .get("/api/modules/tasks-query/tasks")
+      .set("Authorization", "Bearer mock-operator:user-123")
+      .expect(200);
+
+    // - operator xem công việc người khác
+    const operatorBlockedRes = await request(app)
+      .get("/api/modules/tasks-query/tasks?assigneeUid=user-456")
+      .set("Authorization", "Bearer mock-operator:user-123")
+      .expect(403);
+    assert(operatorBlockedRes.body.error?.code === "PERMISSION_DENIED", "G5.1-HTTP: Operator xem công việc của người khác trực tiếp qua query params phải bị chặn.");
+
+    if (originalSource !== undefined) {
+      process.env.TASKS_QUERY_SOURCE = originalSource;
+    } else {
+      delete process.env.TASKS_QUERY_SOURCE;
+    }
+    resetTaskQueryRepository();
+
+    console.log("   [PASSED] TC-G5-07: Toàn bộ kiểm thử HTTP End-to-End với Authentication, RBAC và Envelope thành công.");
+  } catch (error) {
+    assert(false, `TC-G5-07 Thất bại: ${error}`);
   }
 
 

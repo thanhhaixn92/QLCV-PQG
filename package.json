@@ -11,7 +11,8 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "seed:task": "tsx scripts/seedTask.ts",
-    "verify:tasks-query": "tsx scripts/verifyTasksQuery.ts"
+    "verify:tasks-query": "tsx scripts/verifyTasksQuery.ts",
+    "verify:tasks-query:http": "tsx scripts/verifyTasksQueryHttp.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -76,21 +76,43 @@ export const taskDocumentMapper = {
     // Safely parse timestamps
     const parseTimestamp = (ts: unknown): string | null => {
       if (!ts) return null;
-      if (typeof ts === "object" && ts !== null) {
-        const tsObj = ts as Record<string, unknown>;
-        if (typeof tsObj.toDate === "function") {
-          return (tsObj.toDate as () => Date)().toISOString();
+      try {
+        if (typeof ts === "object" && ts !== null) {
+          const tsObj = ts as Record<string, unknown>;
+          if (typeof tsObj.toDate === "function") {
+            const date = (tsObj.toDate as () => Date)();
+            if (date instanceof Date && !isNaN(date.getTime())) {
+              return date.toISOString();
+            }
+            return null;
+          }
+          if (tsObj._seconds !== undefined) {
+            const sec = Number(tsObj._seconds);
+            if (!isNaN(sec) && isFinite(sec)) {
+              const date = new Date(sec * 1000);
+              if (!isNaN(date.getTime())) {
+                return date.toISOString();
+              }
+            }
+            return null;
+          }
         }
-        if (tsObj._seconds !== undefined) {
-          return new Date(Number(tsObj._seconds) * 1000).toISOString();
+        if (ts instanceof Date) {
+          if (!isNaN(ts.getTime())) {
+            return ts.toISOString();
+          }
+          return null;
         }
-      }
-      if (ts instanceof Date) {
-        return ts.toISOString();
-      }
-      const parsed = Date.parse(String(ts));
-      if (!isNaN(parsed)) {
-        return new Date(parsed).toISOString();
+        const strVal = String(ts);
+        const parsed = Date.parse(strVal);
+        if (!isNaN(parsed)) {
+          const date = new Date(parsed);
+          if (!isNaN(date.getTime())) {
+            return date.toISOString();
+          }
+        }
+      } catch {
+        return null;
       }
       return null;
     };

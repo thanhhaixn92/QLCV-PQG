@@ -10,6 +10,18 @@ async function main() {
   const tasksCollection = process.env.TASKS_COLLECTION;
   const tsMode = process.env.TASKS_TIMESTAMP_MODE || "firestore";
 
+  // Validate TASKS_TIMESTAMP_MODE
+  if (tsMode !== "firestore" && tsMode !== "iso-string") {
+    console.error(`Lỗi: Giá trị TASKS_TIMESTAMP_MODE không hợp lệ: '${tsMode}'. Chỉ chấp nhận 'firestore' hoặc 'iso-string'.`);
+    process.exit(1);
+  }
+
+  // Our seed verification explicitly requires firestore mode for real Firestore timestamps
+  if (tsMode !== "firestore") {
+    console.error(`Lỗi: verifyTasksQuery yêu cầu TASKS_TIMESTAMP_MODE phải là 'firestore' để đồng bộ chính xác dữ liệu thực tế.`);
+    process.exit(1);
+  }
+
   if (!tasksCollection || !tasksCollection.trim()) {
     console.error("Lỗi: Thiếu cấu hình TASKS_COLLECTION.");
     process.exit(1);
