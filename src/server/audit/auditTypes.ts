@@ -12,5 +12,5 @@ export interface AuditEvent {
   requestId: string;
   result: "success" | "denied" | "failed";
   reason?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }

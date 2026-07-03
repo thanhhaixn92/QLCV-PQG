@@ -3,9 +3,11 @@ import { AppRequest } from "../../auth/authTypes";
 import { authenticateRequest } from "../../auth/authenticateRequest";
 import { checkPermission } from "../../auth/authorization";
 import { requireModuleEnabled } from "../moduleStateService";
-import { tasksQueryServiceMock } from "./tasksQueryService.mock";
+import { tasksQueryService } from "./tasksQueryService";
+import { AppError } from "../../../shared/errors/appError";
 
 export function registerTasksQueryRoutes(router: Router) {
+  // GET /api/modules/tasks-query/tasks
   router.get(
     "/modules/tasks-query/tasks",
     authenticateRequest,
@@ -13,10 +15,43 @@ export function registerTasksQueryRoutes(router: Router) {
     requireModuleEnabled("tasks-query"),
     async (req: AppRequest, res: Response, next: NextFunction) => {
       try {
-        const tasks = await tasksQueryServiceMock.getTasks(req);
+        const result = await tasksQueryService.getTasks(req);
         res.json({
           success: true,
-          tasks,
+          data: result,
+          tasks: result.items, // Backward compatibility with legacy tests
+          requestId: req.requestId
+        });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  // GET /api/modules/tasks-query/tasks/:id
+  router.get(
+    "/modules/tasks-query/tasks/:id",
+    authenticateRequest,
+    checkPermission("tasks.read"),
+    requireModuleEnabled("tasks-query"),
+    async (req: AppRequest, res: Response, next: NextFunction) => {
+      try {
+        const taskId = req.params.id;
+        if (!taskId || !taskId.trim()) {
+          throw new AppError("VALIDATION_FAILED", "Mã công việc không hợp lệ.");
+        }
+
+        const task = await tasksQueryService.getTaskById(taskId, req);
+        if (!task) {
+          throw new AppError(
+            "PERMISSION_DENIED",
+            "Công việc không tồn tại hoặc bạn không có quyền truy cập."
+          );
+        }
+
+        res.json({
+          success: true,
+          data: task,
           requestId: req.requestId
         });
       } catch (error) {

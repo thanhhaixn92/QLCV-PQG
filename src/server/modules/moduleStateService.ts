@@ -61,7 +61,7 @@ export const moduleStateService = {
     const mode = getRepositoryPersistenceMode();
     try {
       const repo = getModuleStateRepository();
-      const records = await repo.list();
+      const { records, invalidRecordCount } = await repo.list();
       let count = 0;
 
       for (const record of records) {
@@ -74,20 +74,20 @@ export const moduleStateService = {
         }
       }
 
-      const invalidCount = (records as any).invalidCount || 0;
-      if (invalidCount > 0) {
+      if (invalidRecordCount > 0) {
         hydrated = true;
         lastHydratedAt = new Date();
         persistenceStatus = "degraded";
-        return { success: true, mode, count, invalidRecordCount: invalidCount };
+        return { success: true, mode, count, invalidRecordCount };
       }
 
       hydrated = true;
       lastHydratedAt = new Date();
       persistenceStatus = "ready";
       return { success: true, mode, count };
-    } catch (error: any) {
-      logger.error(`ModuleStateService: Hydration thất bại: ${error.message}`);
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      logger.error(`ModuleStateService: Hydration thất bại: ${errMsg}`);
       hydrated = false;
       persistenceStatus = "degraded";
       // Startup hydration is non-crashing, safe error returned
@@ -132,11 +132,12 @@ export const moduleStateService = {
       moduleRegistry.updateModuleState(input.moduleId, record.state);
 
       return record;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof AppError) {
         throw error;
       }
-      logger.error(`ModuleStateService: Giao dịch cập nhật trạng thái lỗi: ${error.message}`);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      logger.error(`ModuleStateService: Giao dịch cập nhật trạng thái lỗi: ${errMsg}`);
       throw new AppError(
         "DEPENDENCY_UNAVAILABLE",
         "Không thể lưu trạng thái mô-đun tại thời điểm này."

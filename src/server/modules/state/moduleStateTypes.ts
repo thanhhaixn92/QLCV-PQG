@@ -17,10 +17,15 @@ export interface SetModuleStateInput {
   expectedVersion?: number;
 }
 
+export interface ModuleStateListResult {
+  records: PersistedModuleState[];
+  invalidRecordCount: number;
+}
+
 export interface ModuleStateRepository {
   get(moduleId: string): Promise<PersistedModuleState | null>;
   set(input: SetModuleStateInput): Promise<PersistedModuleState>;
-  list(): Promise<PersistedModuleState[]>;
+  list(): Promise<ModuleStateListResult>;
 }
 
 export type ModuleStatePersistenceStatus = {

@@ -1,4 +1,4 @@
-import { ModuleStateRepository, PersistedModuleState, SetModuleStateInput } from "./moduleStateTypes";
+import { ModuleStateRepository, PersistedModuleState, SetModuleStateInput, ModuleStateListResult } from "./moduleStateTypes";
 import { persistedModuleStateSchema } from "./moduleStateSchemas";
 import { AppError } from "../../../shared/errors/appError";
 
@@ -50,8 +50,11 @@ export class InMemoryModuleStateRepository implements ModuleStateRepository {
     return record;
   }
 
-  async list(): Promise<PersistedModuleState[]> {
-    return Array.from(this.states.values());
+  async list(): Promise<ModuleStateListResult> {
+    return {
+      records: Array.from(this.states.values()),
+      invalidRecordCount: 0,
+    };
   }
 
   // Helper for tests to pre-seed state

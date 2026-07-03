@@ -28,7 +28,7 @@ export function registerCoreRoutes(router: Router) {
     async (req: AppRequest, res: Response, next: NextFunction) => {
       try {
         const repo = getModuleStateRepository();
-        const persistedStates = await repo.list();
+        const { records: persistedStates } = await repo.list();
         const registered = moduleRegistry.getAllModules();
         
         const data = registered.map((mod) => {

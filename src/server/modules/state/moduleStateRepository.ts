@@ -1,10 +1,22 @@
 import { serverConfig } from "../../app/serverConfig";
 import { getFirebaseStatus } from "../../infrastructure/firebase/firebaseAdmin";
-import { ModuleStateRepository } from "./moduleStateTypes";
+import { ModuleStateRepository, PersistedModuleState, SetModuleStateInput, ModuleStateListResult } from "./moduleStateTypes";
 import { InMemoryModuleStateRepository } from "./inMemoryModuleStateRepository";
 import { FirestoreModuleStateRepository } from "./firestoreModuleStateRepository";
 import { logger } from "../../infrastructure/logging/logger";
 import { AppError } from "../../../shared/errors/appError";
+
+export class UnavailableModuleStateRepository implements ModuleStateRepository {
+  async get(moduleId: string): Promise<PersistedModuleState | null> {
+    throw new AppError("DEPENDENCY_UNAVAILABLE", "Hệ thống lưu trữ trạng thái không khả dụng ở chế độ production.");
+  }
+  async set(input: SetModuleStateInput): Promise<PersistedModuleState> {
+    throw new AppError("DEPENDENCY_UNAVAILABLE", "Hệ thống lưu trữ trạng thái không khả dụng ở chế độ production.");
+  }
+  async list(): Promise<ModuleStateListResult> {
+    throw new AppError("DEPENDENCY_UNAVAILABLE", "Hệ thống lưu trữ trạng thái không khả dụng ở chế độ production.");
+  }
+}
 
 let activeRepository: ModuleStateRepository | null = null;
 let currentMode: "firestore" | "in-memory" | "unavailable" = "unavailable";
@@ -27,21 +39,12 @@ export function getModuleStateRepository(): ModuleStateRepository {
       activeRepository = new FirestoreModuleStateRepository();
       currentMode = "firestore";
       logger.info("ModuleStateRepository: Khởi tạo FirestoreModuleStateRepository làm bộ lưu trữ trạng thái.");
-    } catch (e: any) {
-      logger.error(`ModuleStateRepository: Không thể khởi tạo Firestore adapter. Lỗi: ${e.message}`);
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      logger.error(`ModuleStateRepository: Không thể khởi tạo Firestore adapter. Lỗi: ${errMsg}`);
       if (isProduction) {
         currentMode = "unavailable";
-        activeRepository = {
-          async get() {
-            throw new AppError("DEPENDENCY_UNAVAILABLE", "Hệ thống lưu trữ trạng thái không khả dụng ở chế độ production.");
-          },
-          async set() {
-            throw new AppError("DEPENDENCY_UNAVAILABLE", "Hệ thống lưu trữ trạng thái không khả dụng ở chế độ production.");
-          },
-          async list() {
-            throw new AppError("DEPENDENCY_UNAVAILABLE", "Hệ thống lưu trữ trạng thái không khả dụng ở chế độ production.");
-          }
-        };
+        activeRepository = new UnavailableModuleStateRepository();
       } else {
         activeRepository = new InMemoryModuleStateRepository();
         currentMode = "in-memory";
@@ -50,17 +53,7 @@ export function getModuleStateRepository(): ModuleStateRepository {
   } else {
     if (isProduction) {
       currentMode = "unavailable";
-      activeRepository = {
-        async get() {
-          throw new AppError("DEPENDENCY_UNAVAILABLE", "Hệ thống lưu trữ trạng thái không khả dụng ở chế độ production.");
-        },
-        async set() {
-          throw new AppError("DEPENDENCY_UNAVAILABLE", "Hệ thống lưu trữ trạng thái không khả dụng ở chế độ production.");
-        },
-        async list() {
-          throw new AppError("DEPENDENCY_UNAVAILABLE", "Hệ thống lưu trữ trạng thái không khả dụng ở chế độ production.");
-        }
-      };
+      activeRepository = new UnavailableModuleStateRepository();
       logger.warn("ModuleStateRepository: Firestore không khả dụng ở chế độ production. Đặt persistenceMode sang 'unavailable'.");
     } else {
       activeRepository = new InMemoryModuleStateRepository();

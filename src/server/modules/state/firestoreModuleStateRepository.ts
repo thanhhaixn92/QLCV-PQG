@@ -1,7 +1,7 @@
 import { initFirebaseAdmin } from "../../infrastructure/firebase/firebaseAdmin";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { serverConfig } from "../../app/serverConfig";
-import { ModuleStateRepository, PersistedModuleState, SetModuleStateInput } from "./moduleStateTypes";
+import { ModuleStateRepository, PersistedModuleState, SetModuleStateInput, ModuleStateListResult } from "./moduleStateTypes";
 import { persistedModuleStateSchema } from "./moduleStateSchemas";
 import { AppError } from "../../../shared/errors/appError";
 import { logger } from "../../infrastructure/logging/logger";
@@ -155,7 +155,7 @@ export class FirestoreModuleStateRepository implements ModuleStateRepository {
     }
   }
 
-  async list(): Promise<PersistedModuleState[]> {
+  async list(): Promise<ModuleStateListResult> {
     try {
       const db = this.getDb();
       const querySnapshot = await db.collection("system_module_states").get();
@@ -171,16 +171,16 @@ export class FirestoreModuleStateRepository implements ModuleStateRepository {
         }
       });
 
-      if (invalidCount > 0) {
-        (records as any).invalidCount = invalidCount;
-      }
-
-      return records;
-    } catch (error: any) {
+      return {
+        records,
+        invalidRecordCount: invalidCount
+      };
+    } catch (error: unknown) {
       if (error instanceof AppError) {
         throw error;
       }
-      logger.error(`FirestoreModuleStateRepository.list failed: ${error.message}`);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      logger.error(`FirestoreModuleStateRepository.list failed: ${errMsg}`);
       throw new AppError(
         "DEPENDENCY_UNAVAILABLE",
         "Không thể truy xuất trạng thái mô-đun từ cơ sở dữ liệu tại thời điểm này."
