@@ -15,7 +15,19 @@ export function getTaskCommandRepository(): TaskCommandRepository {
     return activeRepo;
   }
 
-  const source = process.env.TASKS_QUERY_SOURCE?.trim() || undefined;
+  const source = process.env.TASKS_COMMAND_SOURCE?.trim() || undefined;
+  const env = process.env.NODE_ENV;
+
+  if (env === "production") {
+    if (source === "in-memory") {
+      logger.warn("TaskCommandRepository: Chạy in-memory trong production (chỉ dùng cho mục đích demo/test).");
+      activeRepo = new InMemoryTaskCommandRepository();
+    } else {
+      activeRepo = new FirestoreTaskCommandRepository();
+      logger.info("TaskCommandRepository: Kích hoạt FirestoreTaskCommandRepository.");
+    }
+    return activeRepo;
+  }
 
   if (source === "firestore") {
     activeRepo = new FirestoreTaskCommandRepository();
@@ -24,7 +36,7 @@ export function getTaskCommandRepository(): TaskCommandRepository {
   }
 
   activeRepo = new InMemoryTaskCommandRepository();
-  logger.info("TaskCommandRepository: Kích hoạt InMemoryTaskCommandRepository fallback.");
+  logger.info("TaskCommandRepository: Kích hoạt InMemoryTaskCommandRepository (mặc định cho test/dev).");
   return activeRepo;
 }
 

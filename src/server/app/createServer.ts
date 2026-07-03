@@ -38,7 +38,11 @@ export async function createServer() {
     
     if (err instanceof AppError) {
       logger.warn(`AppError [${err.code}]: ${err.message}`, { requestId, code: err.code });
-      res.status(err.getStatusCode()).json(err.toJSON());
+      const json = err.toJSON();
+      if (!json.error.requestId) {
+        json.error.requestId = requestId;
+      }
+      res.status(err.getStatusCode()).json(json);
       return;
     }
 

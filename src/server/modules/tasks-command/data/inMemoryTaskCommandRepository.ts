@@ -14,26 +14,55 @@ export function resetMockTasksStore(initialTasks?: TaskRecord[]) {
   }
 }
 
+function checkRowLevelSecurity(task: TaskRecord, context: TaskCommandContext): void {
+  if (context.actorRole === "admin" || context.permissions.includes("tasks.manage")) {
+    return;
+  }
+  
+  if (context.actorRole === "manager") {
+    if (task.departmentId && context.departmentIds.includes(task.departmentId)) {
+      return;
+    }
+    throw new AppError("PERMISSION_DENIED", "Bạn không có quyền thao tác trên công việc của phòng ban này.");
+  }
+  
+  if (context.actorRole === "operator" || context.actorRole === "editor") {
+    if (task.creator.uid === context.actorUid || task.assignee?.uid === context.actorUid) {
+      return;
+    }
+    throw new AppError("PERMISSION_DENIED", "Bạn không có quyền thao tác trên công việc không do bạn tạo hoặc được phân công.");
+  }
+
+  throw new AppError("PERMISSION_DENIED", "Tài khoản không đủ quyền hạn thao tác dữ liệu này.");
+}
+
 export class InMemoryTaskCommandRepository implements TaskCommandRepository {
   async create(
     input: {
       title: string;
       description: string | null;
-      priority: string | null;
+      priority: TaskPriority | null;
       departmentId: string | null;
       assigneeUid: string | null;
+      dueAt: string | null;
     },
     context: TaskCommandContext
   ): Promise<TaskRecord> {
     const taskId = `task-mock-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     const nowIso = new Date().toISOString();
     
+    if (context.actorRole === "manager" && input.departmentId) {
+      if (!context.departmentIds.includes(input.departmentId)) {
+        throw new AppError("PERMISSION_DENIED", "Bạn không có quyền tạo công việc cho phòng ban này.");
+      }
+    }
+
     const task: TaskRecord = {
       id: taskId,
       title: input.title,
       description: input.description,
       status: "todo",
-      priority: (input.priority as TaskPriority) || "low",
+      priority: input.priority || "low",
       departmentId: input.departmentId,
       creator: {
         uid: context.actorUid,
@@ -43,7 +72,7 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
         uid: input.assigneeUid,
         displayName: `User ${input.assigneeUid}`
       } : null,
-      dueAt: null,
+      dueAt: input.dueAt,
       createdAt: nowIso,
       updatedAt: nowIso,
       version: 1,
@@ -57,33 +86,35 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
   async update(
     taskId: string,
     input: {
-      title: string;
-      description: string | null;
-      priority: string | null;
-      dueAt: string | null;
+      title?: string;
+      description?: string | null;
+      priority?: TaskPriority | null;
+      dueAt?: string | null;
     },
     expectedVersion: number,
     context: TaskCommandContext
   ): Promise<TaskRecord> {
     const task = mockTasksStore.get(taskId);
     if (!task) {
-      throw new AppError("TASK_NOT_FOUND", "Công việc không tồn tại.");
+      throw new AppError("TASK_NOT_FOUND", "Công việc không tồn tại.", context.requestId);
     }
+    
+    checkRowLevelSecurity(task, context);
 
     if (task.archivedAt) {
-      throw new AppError("TASK_ARCHIVED", "Công việc đã bị lưu trữ, không thể chỉnh sửa.");
+      throw new AppError("TASK_ARCHIVED", "Công việc đã bị lưu trữ, không thể chỉnh sửa.", context.requestId);
     }
 
     if (task.version !== expectedVersion) {
-      throw new AppError("TASK_VERSION_CONFLICT", "Công việc đã được người khác cập nhật.");
+      throw new AppError("TASK_VERSION_CONFLICT", "Công việc đã được người khác cập nhật.", context.requestId);
     }
 
     const updated: TaskRecord = {
       ...task,
-      title: input.title,
-      description: input.description,
-      priority: (input.priority as TaskPriority) || task.priority,
-      dueAt: input.dueAt,
+      title: input.title !== undefined ? input.title : task.title,
+      description: input.description !== undefined ? input.description : task.description,
+      priority: input.priority !== undefined ? input.priority : task.priority,
+      dueAt: input.dueAt !== undefined ? input.dueAt : task.dueAt,
       version: task.version + 1,
       updatedAt: new Date().toISOString()
     };
@@ -100,50 +131,48 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
   ): Promise<TaskRecord> {
     const task = mockTasksStore.get(taskId);
     if (!task) {
-      throw new AppError("TASK_NOT_FOUND", "Công việc không tồn tại.");
+      throw new AppError("TASK_NOT_FOUND", "Công việc không tồn tại.", context.requestId);
     }
+    
+    checkRowLevelSecurity(task, context);
 
     if (task.archivedAt) {
-      throw new AppError("TASK_ARCHIVED", "Công việc đã bị lưu trữ, không thể chuyển trạng thái.");
+      throw new AppError("TASK_ARCHIVED", "Công việc đã bị lưu trữ, không thể chuyển trạng thái.", context.requestId);
     }
 
     if (task.version !== expectedVersion) {
-      throw new AppError("TASK_VERSION_CONFLICT", "Công việc đã được người khác cập nhật.");
+      throw new AppError("TASK_VERSION_CONFLICT", "Công việc đã được người khác cập nhật.", context.requestId);
     }
 
     let nextStatus: TaskStatus = task.status;
     
     if (transition === "start") {
       if (task.status !== "todo" && task.status !== "backlog") {
-        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển trạng thái sang in_progress không hợp lệ từ ${task.status}.`);
+        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển trạng thái sang in_progress không hợp lệ từ ${task.status}.`, context.requestId);
       }
       nextStatus = "in_progress";
     } else if (transition === "complete") {
       if (task.status !== "in_progress" && task.status !== "todo") {
-        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển trạng thái hoàn thành không hợp lệ từ ${task.status}.`);
+        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển trạng thái hoàn thành không hợp lệ từ ${task.status}.`, context.requestId);
       }
       nextStatus = "completed";
     } else if (transition === "reopen") {
       if (task.status !== "completed") {
-        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", "Chỉ công việc đã hoàn thành mới có thể mở lại.");
+        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", "Chỉ công việc đã hoàn thành mới có thể mở lại.", context.requestId);
       }
       nextStatus = "todo";
     } else if (transition === "block") {
       if (task.status !== "in_progress") {
-        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển trạng thái sang blocked không hợp lệ từ ${task.status}.`);
+        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển trạng thái sang blocked không hợp lệ từ ${task.status}.`, context.requestId);
       }
-      // Since TaskStatus of current model does not have "blocked", we can keep nextStatus as "in_progress" 
-      // or if we ever expand, we can map it. For G6.0 we'll reject other transitions if status schema doesn't permit.
-      // Wait, let's look at the TaskStatus from shared contract: backlog | todo | in_progress | completed
-      // So let's throw transition error or simulate safely. Let's raise an error because they are not in the status enum yet.
-      throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển đổi trạng thái block chưa được hỗ trợ bởi hệ thống danh mục hiện tại.`);
+      throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển đổi trạng thái block chưa được hỗ trợ bởi hệ thống danh mục hiện tại.`, context.requestId);
     } else if (transition === "cancel") {
       if (task.status !== "todo" && task.status !== "in_progress") {
-        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển trạng thái sang cancelled không hợp lệ từ ${task.status}.`);
+        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển trạng thái sang cancelled không hợp lệ từ ${task.status}.`, context.requestId);
       }
-      throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển đổi trạng thái cancel chưa được hỗ trợ bởi hệ thống danh mục hiện tại.`);
+      throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển đổi trạng thái cancel chưa được hỗ trợ bởi hệ thống danh mục hiện tại.`, context.requestId);
     } else {
-      throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển đổi trạng thái ${transition} chưa được cấu hình.`);
+      throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển đổi trạng thái ${transition} chưa được cấu hình.`, context.requestId);
     }
 
     const updated: TaskRecord = {
@@ -165,15 +194,17 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
   ): Promise<TaskRecord> {
     const task = mockTasksStore.get(taskId);
     if (!task) {
-      throw new AppError("TASK_NOT_FOUND", "Công việc không tồn tại.");
+      throw new AppError("TASK_NOT_FOUND", "Công việc không tồn tại.", context.requestId);
     }
+    
+    checkRowLevelSecurity(task, context);
 
     if (task.archivedAt) {
-      throw new AppError("TASK_ARCHIVED", "Công việc đã bị lưu trữ, không thể phân công.");
+      throw new AppError("TASK_ARCHIVED", "Công việc đã bị lưu trữ, không thể phân công.", context.requestId);
     }
 
     if (task.version !== expectedVersion) {
-      throw new AppError("TASK_VERSION_CONFLICT", "Công việc đã được người khác cập nhật.");
+      throw new AppError("TASK_VERSION_CONFLICT", "Công việc đã được người khác cập nhật.", context.requestId);
     }
 
     const updated: TaskRecord = {
@@ -194,11 +225,13 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
   ): Promise<void> {
     const task = mockTasksStore.get(taskId);
     if (!task) {
-      throw new AppError("TASK_NOT_FOUND", "Công việc không tồn tại.");
+      throw new AppError("TASK_NOT_FOUND", "Công việc không tồn tại.", context.requestId);
     }
+    
+    checkRowLevelSecurity(task, context);
 
     if (task.version !== expectedVersion) {
-      throw new AppError("TASK_VERSION_CONFLICT", "Công việc đã được người khác cập nhật.");
+      throw new AppError("TASK_VERSION_CONFLICT", "Công việc đã được người khác cập nhật.", context.requestId);
     }
 
     const updated: TaskRecord = {

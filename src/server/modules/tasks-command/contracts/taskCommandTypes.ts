@@ -1,4 +1,5 @@
 import { TaskStatus, TaskPriority } from "../../../../shared/contracts/tasks/taskContracts";
+import { UserRole, Permission } from "../../../../shared/permissions/permissions";
 
 export type TaskTransition = "start" | "block" | "complete" | "cancel" | "reopen";
 
@@ -25,9 +26,9 @@ export interface TaskRecord {
 
 export interface TaskCommandContext {
   actorUid: string;
-  actorRole: string;
-  permissions: string[];
-  departmentIds: string[];
+  actorRole: UserRole;
+  permissions: readonly Permission[];
+  departmentIds: readonly string[];
   requestId: string;
 }
 
@@ -41,7 +42,7 @@ export interface CreateTaskCommand {
 }
 
 export interface UpdateTaskCommand {
-  title: string;
+  title?: string;
   description?: string | null;
   priority?: TaskPriority | null;
   dueAt?: string | null;
@@ -67,9 +68,10 @@ export interface TaskCommandRepository {
     input: {
       title: string;
       description: string | null;
-      priority: string | null;
+      priority: TaskPriority | null;
       departmentId: string | null;
       assigneeUid: string | null;
+      dueAt: string | null;
     },
     context: TaskCommandContext
   ): Promise<TaskRecord>;
@@ -77,10 +79,10 @@ export interface TaskCommandRepository {
   update(
     taskId: string,
     input: {
-      title: string;
-      description: string | null;
-      priority: string | null;
-      dueAt: string | null;
+      title?: string;
+      description?: string | null;
+      priority?: TaskPriority | null;
+      dueAt?: string | null;
     },
     expectedVersion: number,
     context: TaskCommandContext

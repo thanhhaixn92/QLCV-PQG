@@ -1,32 +1,34 @@
 import { TaskCommandRepository, TaskRecord, TaskCommandContext, TaskTransition, UserReference } from "../contracts/taskCommandTypes";
 import { AppError } from "../../../../shared/errors/appError";
+import { TaskPriority } from "../../../../shared/contracts/tasks/taskContracts";
 
 export class FirestoreTaskCommandRepository implements TaskCommandRepository {
   async create(
     input: {
       title: string;
       description: string | null;
-      priority: string | null;
+      priority: TaskPriority | null;
       departmentId: string | null;
       assigneeUid: string | null;
+      dueAt: string | null;
     },
     context: TaskCommandContext
   ): Promise<TaskRecord> {
-    throw new AppError("NOT_IMPLEMENTED", "Chức năng tạo công việc trên Firestore chưa được triển khai.");
+    throw new AppError("NOT_IMPLEMENTED", "Chức năng tạo công việc trên Firestore chưa được triển khai.", context.requestId);
   }
 
   async update(
     taskId: string,
     input: {
-      title: string;
-      description: string | null;
-      priority: string | null;
-      dueAt: string | null;
+      title?: string;
+      description?: string | null;
+      priority?: TaskPriority | null;
+      dueAt?: string | null;
     },
     expectedVersion: number,
     context: TaskCommandContext
   ): Promise<TaskRecord> {
-    throw new AppError("NOT_IMPLEMENTED", "Chức năng cập nhật công việc trên Firestore chưa được triển khai.");
+    throw new AppError("NOT_IMPLEMENTED", "Chức năng cập nhật công việc trên Firestore chưa được triển khai.", context.requestId);
   }
 
   async transition(
@@ -35,7 +37,7 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
     expectedVersion: number,
     context: TaskCommandContext
   ): Promise<TaskRecord> {
-    throw new AppError("NOT_IMPLEMENTED", "Chuyển trạng thái công việc trên Firestore chưa được triển khai.");
+    throw new AppError("NOT_IMPLEMENTED", "Chuyển trạng thái công việc trên Firestore chưa được triển khai.", context.requestId);
   }
 
   async assign(
@@ -44,7 +46,7 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
     expectedVersion: number,
     context: TaskCommandContext
   ): Promise<TaskRecord> {
-    throw new AppError("NOT_IMPLEMENTED", "Phân công công việc trên Firestore chưa được triển khai.");
+    throw new AppError("NOT_IMPLEMENTED", "Phân công công việc trên Firestore chưa được triển khai.", context.requestId);
   }
 
   async archive(
@@ -52,6 +54,6 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
     expectedVersion: number,
     context: TaskCommandContext
   ): Promise<void> {
-    throw new AppError("NOT_IMPLEMENTED", "Lưu trữ công việc trên Firestore chưa được triển khai.");
+    throw new AppError("NOT_IMPLEMENTED", "Lưu trữ công việc trên Firestore chưa được triển khai.", context.requestId);
   }
 }

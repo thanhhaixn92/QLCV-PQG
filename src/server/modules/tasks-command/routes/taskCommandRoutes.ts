@@ -5,7 +5,8 @@ import { checkPermission } from "../../../auth/authorization";
 import { requireModuleEnabled } from "../../moduleStateService";
 import { taskCommandService } from "../services/taskCommandService";
 import { AppError } from "../../../../shared/errors/appError";
-import { ROLE_PERMISSIONS } from "../../../../shared/permissions/permissions";
+import { ROLE_PERMISSIONS, UserRole } from "../../../../shared/permissions/permissions";
+import { TaskCommandContext } from "../contracts/taskCommandTypes";
 import {
   createTaskSchema,
   updateTaskSchema,
@@ -15,14 +16,14 @@ import {
 } from "../contracts/taskCommandSchemas";
 
 export function registerTaskCommandRoutes(router: Router) {
-  function getCommandContext(req: AppRequest): any {
-    const role = req.user?.role || "viewer";
+  function getCommandContext(req: AppRequest): TaskCommandContext {
+    const role: UserRole = req.user?.role || "viewer";
     const permissions = ROLE_PERMISSIONS[role] || [];
     return {
       actorUid: req.user?.uid || "unknown",
       actorRole: role,
       permissions: [...permissions],
-      departmentIds: [],
+      departmentIds: req.user?.departmentIds || [],
       requestId: req.requestId || "system-requestId"
     };
   }
@@ -37,7 +38,7 @@ export function registerTaskCommandRoutes(router: Router) {
       try {
         const bodyParse = createTaskSchema.safeParse(req.body);
         if (!bodyParse.success) {
-          throw new AppError("VALIDATION_FAILED", "Yêu cầu không hợp lệ: " + bodyParse.error.message);
+          throw new AppError("VALIDATION_FAILED", "Yêu cầu không hợp lệ: " + bodyParse.error.message, req.requestId);
         }
 
         const context = getCommandContext(req);
@@ -48,14 +49,14 @@ export function registerTaskCommandRoutes(router: Router) {
           requestId: req.requestId,
           data: { task: result }
         });
-      } catch (error) {
+      } catch (error: unknown) {
         next(error);
       }
     }
   );
 
-  // PUT /modules/tasks-command/tasks/:id
-  router.put(
+  // PATCH /modules/tasks-command/tasks/:id
+  router.patch(
     "/modules/tasks-command/tasks/:id",
     authenticateRequest,
     requireModuleEnabled("tasks-command"),
@@ -64,12 +65,12 @@ export function registerTaskCommandRoutes(router: Router) {
       try {
         const taskId = req.params.id;
         if (!taskId || !taskId.trim()) {
-          throw new AppError("VALIDATION_FAILED", "Mã công việc không hợp lệ.");
+          throw new AppError("VALIDATION_FAILED", "Mã công việc không hợp lệ.", req.requestId);
         }
 
         const bodyParse = updateTaskSchema.safeParse(req.body);
         if (!bodyParse.success) {
-          throw new AppError("VALIDATION_FAILED", "Yêu cầu không hợp lệ: " + bodyParse.error.message);
+          throw new AppError("VALIDATION_FAILED", "Yêu cầu không hợp lệ: " + bodyParse.error.message, req.requestId);
         }
 
         const context = getCommandContext(req);
@@ -80,7 +81,7 @@ export function registerTaskCommandRoutes(router: Router) {
           requestId: req.requestId,
           data: { task: result }
         });
-      } catch (error) {
+      } catch (error: unknown) {
         next(error);
       }
     }
@@ -96,12 +97,12 @@ export function registerTaskCommandRoutes(router: Router) {
       try {
         const taskId = req.params.id;
         if (!taskId || !taskId.trim()) {
-          throw new AppError("VALIDATION_FAILED", "Mã công việc không hợp lệ.");
+          throw new AppError("VALIDATION_FAILED", "Mã công việc không hợp lệ.", req.requestId);
         }
 
         const bodyParse = assignTaskSchema.safeParse(req.body);
         if (!bodyParse.success) {
-          throw new AppError("VALIDATION_FAILED", "Yêu cầu không hợp lệ: " + bodyParse.error.message);
+          throw new AppError("VALIDATION_FAILED", "Yêu cầu không hợp lệ: " + bodyParse.error.message, req.requestId);
         }
 
         const context = getCommandContext(req);
@@ -112,7 +113,7 @@ export function registerTaskCommandRoutes(router: Router) {
           requestId: req.requestId,
           data: { task: result }
         });
-      } catch (error) {
+      } catch (error: unknown) {
         next(error);
       }
     }
@@ -128,12 +129,12 @@ export function registerTaskCommandRoutes(router: Router) {
       try {
         const taskId = req.params.id;
         if (!taskId || !taskId.trim()) {
-          throw new AppError("VALIDATION_FAILED", "Mã công việc không hợp lệ.");
+          throw new AppError("VALIDATION_FAILED", "Mã công việc không hợp lệ.", req.requestId);
         }
 
         const bodyParse = transitionTaskSchema.safeParse(req.body);
         if (!bodyParse.success) {
-          throw new AppError("VALIDATION_FAILED", "Yêu cầu không hợp lệ: " + bodyParse.error.message);
+          throw new AppError("VALIDATION_FAILED", "Yêu cầu không hợp lệ: " + bodyParse.error.message, req.requestId);
         }
 
         const context = getCommandContext(req);
@@ -144,7 +145,7 @@ export function registerTaskCommandRoutes(router: Router) {
           requestId: req.requestId,
           data: { task: result }
         });
-      } catch (error) {
+      } catch (error: unknown) {
         next(error);
       }
     }
@@ -160,12 +161,12 @@ export function registerTaskCommandRoutes(router: Router) {
       try {
         const taskId = req.params.id;
         if (!taskId || !taskId.trim()) {
-          throw new AppError("VALIDATION_FAILED", "Mã công việc không hợp lệ.");
+          throw new AppError("VALIDATION_FAILED", "Mã công việc không hợp lệ.", req.requestId);
         }
 
         const bodyParse = archiveTaskSchema.safeParse(req.body);
         if (!bodyParse.success) {
-          throw new AppError("VALIDATION_FAILED", "Yêu cầu không hợp lệ: " + bodyParse.error.message);
+          throw new AppError("VALIDATION_FAILED", "Yêu cầu không hợp lệ: " + bodyParse.error.message, req.requestId);
         }
 
         const context = getCommandContext(req);
@@ -175,7 +176,7 @@ export function registerTaskCommandRoutes(router: Router) {
           success: true,
           requestId: req.requestId
         });
-      } catch (error) {
+      } catch (error: unknown) {
         next(error);
       }
     }

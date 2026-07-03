@@ -3,6 +3,13 @@ import { CreateTaskCommand, UpdateTaskCommand, AssignTaskCommand, TransitionTask
 import { auditService } from "../../../audit/auditService";
 import { AppError } from "../../../../shared/errors/appError";
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 export const taskCommandService = {
   async createTask(command: CreateTaskCommand, context: TaskCommandContext): Promise<TaskRecord> {
     try {
@@ -12,7 +19,8 @@ export const taskCommandService = {
         description: command.description ?? null,
         priority: command.priority ?? null,
         departmentId: command.departmentId ?? null,
-        assigneeUid: command.assigneeUid ?? null
+        assigneeUid: command.assigneeUid ?? null,
+        dueAt: command.dueAt ?? null
       }, context);
 
       auditService.logEvent({
@@ -26,7 +34,7 @@ export const taskCommandService = {
       });
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       auditService.logEvent({
         actor: { type: "user", id: context.actorUid },
         action: "task.created",
@@ -34,7 +42,7 @@ export const taskCommandService = {
         targetType: "task",
         requestId: context.requestId,
         result: error instanceof AppError && error.code === "PERMISSION_DENIED" ? "denied" : "failed",
-        reason: error.message
+        reason: getErrorMessage(error)
       });
       throw error;
     }
@@ -45,9 +53,9 @@ export const taskCommandService = {
       const repo = getTaskCommandRepository();
       const result = await repo.update(taskId, {
         title: command.title,
-        description: command.description ?? null,
-        priority: command.priority ?? null,
-        dueAt: command.dueAt ?? null
+        description: command.description,
+        priority: command.priority,
+        dueAt: command.dueAt
       }, command.expectedVersion, context);
 
       auditService.logEvent({
@@ -61,7 +69,7 @@ export const taskCommandService = {
       });
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       auditService.logEvent({
         actor: { type: "user", id: context.actorUid },
         action: "task.updated",
@@ -70,7 +78,7 @@ export const taskCommandService = {
         targetId: taskId,
         requestId: context.requestId,
         result: error instanceof AppError && error.code === "PERMISSION_DENIED" ? "denied" : "failed",
-        reason: error.message
+        reason: getErrorMessage(error)
       });
       throw error;
     }
@@ -97,7 +105,7 @@ export const taskCommandService = {
       });
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       auditService.logEvent({
         actor: { type: "user", id: context.actorUid },
         action: "task.assigned",
@@ -106,7 +114,7 @@ export const taskCommandService = {
         targetId: taskId,
         requestId: context.requestId,
         result: error instanceof AppError && error.code === "PERMISSION_DENIED" ? "denied" : "failed",
-        reason: error.message
+        reason: getErrorMessage(error)
       });
       throw error;
     }
@@ -128,7 +136,7 @@ export const taskCommandService = {
       });
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       auditService.logEvent({
         actor: { type: "user", id: context.actorUid },
         action: "task.transitioned",
@@ -137,7 +145,7 @@ export const taskCommandService = {
         targetId: taskId,
         requestId: context.requestId,
         result: error instanceof AppError && error.code === "PERMISSION_DENIED" ? "denied" : "failed",
-        reason: error.message
+        reason: getErrorMessage(error)
       });
       throw error;
     }
@@ -157,7 +165,7 @@ export const taskCommandService = {
         requestId: context.requestId,
         result: "success"
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       auditService.logEvent({
         actor: { type: "user", id: context.actorUid },
         action: "task.archived",
@@ -166,7 +174,7 @@ export const taskCommandService = {
         targetId: taskId,
         requestId: context.requestId,
         result: error instanceof AppError && error.code === "PERMISSION_DENIED" ? "denied" : "failed",
-        reason: error.message
+        reason: getErrorMessage(error)
       });
       throw error;
     }

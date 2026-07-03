@@ -7,6 +7,7 @@ export interface AuthenticatedUser {
   emailVerified: boolean;
   role: UserRole;
   displayName?: string;
+  departmentIds?: readonly string[];
   isMock: boolean;
 }
 
