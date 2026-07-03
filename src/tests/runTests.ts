@@ -2122,7 +2122,7 @@ async function runAllTests() {
       createdAt: { _seconds: "invalid_number_here" },
       updatedAt: "invalid-date-string"
     };
-    const mappedMalformed = taskDocumentMapper.map("id-malformed", docWithMalformedTs as any, "firestore");
+    const mappedMalformed = taskDocumentMapper.map("id-malformed", docWithMalformedTs as unknown as Record<string, unknown>, "firestore");
     assert(mappedMalformed !== null, "TC-G5-03: Mapper phải hoạt động ngay cả khi dữ liệu timestamp bị hỏng.");
     assert(mappedMalformed?.dueAt === null, "TC-G5-03: toDate ném lỗi phải trả về dueAt = null.");
     assert(typeof mappedMalformed?.createdAt === "string", "TC-G5-03: createdAt lỗi phải fallback sang thời gian hiện tại.");
@@ -2184,8 +2184,8 @@ async function runAllTests() {
         permissions: ["tasks.department"],
         departmentIds: ["dept-b"] // Only authorized for dept-b
       });
-    } catch (e: any) {
-      if (e.code === "PERMISSION_DENIED") {
+    } catch (e: unknown) {
+      if (e instanceof AppError && e.code === "PERMISSION_DENIED") {
         managerBlocked = true;
       }
     }
@@ -2207,8 +2207,8 @@ async function runAllTests() {
         actorRole: "operator",
         permissions: ["tasks.read"]
       });
-    } catch (e: any) {
-      if (e.code === "PERMISSION_DENIED") {
+    } catch (e: unknown) {
+      if (e instanceof AppError && e.code === "PERMISSION_DENIED") {
         operatorBlocked = true;
       }
     }
@@ -2224,17 +2224,19 @@ async function runAllTests() {
     const { mapFirestoreError } = await import("../server/modules/tasks-query/data/firestoreTaskQueryErrorMapper");
     
     // 1. Simulate a missing composite index error
-    const fakeMissingIndexError: any = new Error("FAILED_PRECONDITION: The query requires an index. Create it here: https://console.firebase.google.com/project/123/database/firestore/indexes?create_composite=12345");
-    fakeMissingIndexError.code = 9;
+    const fakeMissingIndexError = Object.assign(
+      new Error("FAILED_PRECONDITION: The query requires an index. Create it here: https://console.firebase.google.com/project/123/database/firestore/indexes?create_composite=12345"),
+      { code: 9 }
+    );
 
     let isSecureMissingIndexError = false;
     try {
       throw mapFirestoreError(fakeMissingIndexError, "TestContext");
-    } catch (mappedErr: any) {
+    } catch (mappedErr: unknown) {
       if (
+        mappedErr instanceof AppError &&
         mappedErr.code === "DEPENDENCY_UNAVAILABLE" &&
-        mappedErr.message === "Truy vấn công việc hiện chưa được hệ thống hỗ trợ đầy đủ." &&
-        !mappedErr.message.includes("https://console.firebase.google.com")
+        mappedErr.message === "Truy vấn công việc hiện chưa được hệ thống hỗ trợ đầy đủ."
       ) {
         isSecureMissingIndexError = true;
       }
@@ -2245,11 +2247,11 @@ async function runAllTests() {
     let isSecureGenericError = false;
     try {
       throw mapFirestoreError(fakeGenericError, "TestContext");
-    } catch (mappedErr: any) {
+    } catch (mappedErr: unknown) {
       if (
+        mappedErr instanceof AppError &&
         mappedErr.code === "DEPENDENCY_UNAVAILABLE" &&
-        mappedErr.message === "Dịch vụ lưu trữ Firestore gặp sự cố truy vấn tại thời điểm này." &&
-        !mappedErr.message.includes("gRPC")
+        mappedErr.message === "Dịch vụ lưu trữ Firestore gặp sự cố truy vấn tại thời điểm này."
       ) {
         isSecureGenericError = true;
       }
