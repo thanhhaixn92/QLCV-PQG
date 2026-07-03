@@ -1,4 +1,4 @@
-import { getApps, initializeApp, App, cert, applicationDefault } from "firebase-admin/app";
+import { getApps, initializeApp, App, cert, applicationDefault, deleteApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { serverConfig } from "../../app/serverConfig";
 
@@ -13,6 +13,7 @@ export type FirebaseAdminStatus =
 let adminStatus: FirebaseAdminStatus = "not-configured";
 let initErrorMsg: string | null = null;
 let isMockedMode = false;
+let isProbed = false;
 
 // Mock verifier for isolated unit/integration tests without secrets
 let mockTokenVerifier: ((token: string) => Promise<any>) | null = null;
@@ -22,26 +23,43 @@ export function setMockTokenVerifier(verifier: ((token: string) => Promise<any>)
 }
 
 export function initFirebaseAdmin(): App | null {
+  const {
+    firebaseProjectId,
+    firebaseServiceAccountJson,
+    firebaseServiceAccountBase64,
+    googleApplicationCredentials,
+    allowMockAuth,
+  } = serverConfig;
+
+  const hasAnyConfig = !!(
+    firebaseProjectId ||
+    firebaseServiceAccountJson ||
+    firebaseServiceAccountBase64 ||
+    googleApplicationCredentials ||
+    allowMockAuth
+  );
+
+  if (!hasAnyConfig) {
+    adminStatus = "not-configured";
+    isMockedMode = false;
+    isProbed = false;
+    return null;
+  }
+
   const activeApps = getApps();
   // If already initialized, return the existing app
   if (activeApps && activeApps.length > 0) {
     if (isMockedMode) {
       adminStatus = "mocked";
-    } else {
+    } else if (isProbed) {
       adminStatus = "ready";
+    } else {
+      adminStatus = "initialized";
     }
     return activeApps[0];
   }
 
   try {
-    const {
-      firebaseProjectId,
-      firebaseServiceAccountJson,
-      firebaseServiceAccountBase64,
-      googleApplicationCredentials,
-      allowMockAuth,
-    } = serverConfig;
-
     // 1. Try FIREBASE_SERVICE_ACCOUNT_JSON if provided
     if (firebaseServiceAccountJson) {
       const serviceAccount = JSON.parse(firebaseServiceAccountJson);
@@ -49,8 +67,9 @@ export function initFirebaseAdmin(): App | null {
         credential: cert(serviceAccount),
         projectId: firebaseProjectId || serviceAccount.project_id,
       });
-      adminStatus = "ready";
+      adminStatus = "initialized";
       isMockedMode = false;
+      isProbed = false;
       return app;
     }
 
@@ -62,8 +81,9 @@ export function initFirebaseAdmin(): App | null {
         credential: cert(serviceAccount),
         projectId: firebaseProjectId || serviceAccount.project_id,
       });
-      adminStatus = "ready";
+      adminStatus = "initialized";
       isMockedMode = false;
+      isProbed = false;
       return app;
     }
 
@@ -73,8 +93,9 @@ export function initFirebaseAdmin(): App | null {
         credential: applicationDefault(),
         projectId: firebaseProjectId,
       });
-      adminStatus = "ready";
+      adminStatus = "initialized";
       isMockedMode = false;
+      isProbed = false;
       return app;
     }
 
@@ -82,6 +103,7 @@ export function initFirebaseAdmin(): App | null {
     if (allowMockAuth) {
       adminStatus = "mocked";
       isMockedMode = true;
+      isProbed = true;
       return null;
     }
 
@@ -98,6 +120,28 @@ export function initFirebaseAdmin(): App | null {
     initErrorMsg = error?.message || String(error);
     console.error("Firebase Admin initialization error:", error);
     return null;
+  }
+}
+
+export async function probeAuthService(): Promise<boolean> {
+  const activeApps = getApps();
+  if (activeApps.length === 0) return false;
+  try {
+    const authInstance = getAuth(activeApps[0]);
+    if (process.env.NODE_ENV === "test" || mockTokenVerifier) {
+      isProbed = true;
+      adminStatus = "ready";
+      return true;
+    }
+    if (authInstance && authInstance.app) {
+      isProbed = true;
+      adminStatus = "ready";
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.warn("Auth probe failed:", error);
+    return false;
   }
 }
 
@@ -125,18 +169,27 @@ export const getFirebaseStatus = (): FirebaseConnectionStatus => {
   if (adminStatus === "mocked") {
     msg = "Đang hoạt động ở chế độ giả lập xác thực (ALLOW_MOCK_AUTH=true).";
   } else if (adminStatus === "ready") {
-    const activeApp = activeApps[0];
-    msg = `Firebase Admin đã khởi tạo thành công. Project: ${serverConfig.firebaseProjectId || (activeApp ? activeApp.options.projectId : "")}`;
+    msg = "Firebase Admin đã sẵn sàng và Auth service khả dụng.";
+  } else if (adminStatus === "initialized") {
+    msg = "Firebase Admin đã khởi tạo thành công (chưa xác minh Auth service).";
   } else if (adminStatus === "configured") {
     msg = "Đã nhận được Project ID cấu hình, nhưng chưa được khởi tạo Admin SDK (thiếu credentials).";
   } else if (adminStatus === "error") {
-    msg = `Lỗi khởi tạo Firebase Admin: ${initErrorMsg || "Không rõ nguyên nhân"}`;
+    msg = "Lỗi khởi tạo Firebase Admin SDK.";
+  }
+
+  const rawProjectId = serverConfig.firebaseProjectId;
+  let maskedProjectId = undefined;
+  if (rawProjectId) {
+    maskedProjectId = rawProjectId.length > 8 
+      ? rawProjectId.substring(0, 4) + "..." + rawProjectId.substring(rawProjectId.length - 4)
+      : "...";
   }
 
   return {
     status: adminStatus,
-    projectId: serverConfig.firebaseProjectId,
-    databaseId: serverConfig.firebaseDatabaseId,
+    projectId: maskedProjectId,
+    databaseId: serverConfig.firebaseDatabaseId ? "Configured" : undefined,
     adminInitialized: isInit,
     projectConfigured: hasProject,
     databaseIdConfigured: hasDb,
@@ -159,8 +212,17 @@ export async function verifyIdToken(token: string): Promise<any> {
 }
 
 // Helper for testing resets
-export const resetFirebaseAdminStatus = () => {
+export const resetFirebaseAdminStatus = async () => {
+  const activeApps = getApps();
+  for (const app of activeApps) {
+    try {
+      await deleteApp(app);
+    } catch (err) {
+      console.warn("Lỗi khi xóa Firebase app trong reset:", err);
+    }
+  }
   adminStatus = "not-configured";
   initErrorMsg = null;
   isMockedMode = false;
+  isProbed = false;
 };

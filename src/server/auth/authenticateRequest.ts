@@ -86,8 +86,11 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
       if (err instanceof AppError && err.code === "PERMISSION_DENIED") {
         throw err;
       }
-      // Bất kỳ lỗi xác thực token nào đều trả về AUTH_REQUIRED
-      throw new AppError("AUTH_REQUIRED", `Xác thực Firebase thất bại: ${err?.message || "Token không hợp lệ hoặc đã hết hạn."}`, req.requestId);
+      // Ghi log chi tiết lỗi kỹ thuật phía server kèm requestId, tuyệt đối không log raw token
+      console.warn(`[AuthError] RequestId: ${req.requestId}. Chi tiết lỗi xác thực:`, err?.message || err);
+
+      // Trả về thông báo chung, an toàn cho client
+      throw new AppError("AUTH_REQUIRED", "Token không hợp lệ hoặc đã hết hạn.", req.requestId);
     }
   } catch (error) {
     next(error);

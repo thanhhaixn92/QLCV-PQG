@@ -2,21 +2,30 @@ import { UserRole } from "../../shared/permissions/permissions";
 import { serverConfig } from "../app/serverConfig";
 import { AppError } from "../../shared/errors/appError";
 
-const DEVELOPMENT_MAPPINGS: Record<string, UserRole> = {
-  "thanhhaikkk36@gmail.com": "admin",
-  "admin@qlcv.local": "admin",
-  "manager@qlcv.local": "manager",
-  "editor@qlcv.local": "editor",
-  "operator@qlcv.local": "operator",
-  "viewer@qlcv.local": "viewer",
-};
-
-export function isValidRole(role: any): role is UserRole {
+export function isValidRole(role: unknown): role is UserRole {
+  if (typeof role !== "string") return false;
   return ["admin", "manager", "editor", "operator", "viewer"].includes(role);
 }
 
+function parseDevRoleMappings(mappingsStr: string | undefined): Record<string, UserRole> {
+  const result: Record<string, UserRole> = {};
+  if (!mappingsStr) return result;
+  const pairs = mappingsStr.split(",");
+  for (const pair of pairs) {
+    const parts = pair.split(":");
+    if (parts.length === 2) {
+      const email = parts[0].trim().toLowerCase();
+      const role = parts[1].trim();
+      if (isValidRole(role)) {
+        result[email] = role;
+      }
+    }
+  }
+  return result;
+}
+
 export function resolveUserRole(
-  decodedToken: { email?: string; role?: any; [key: string]: any },
+  decodedToken: { email?: string; role?: unknown; [key: string]: unknown },
   requestId?: string
 ): UserRole {
   const email = decodedToken.email;
@@ -54,9 +63,13 @@ export function resolveUserRole(
     return decodedToken.role;
   }
 
-  // 2. Allowlist hoặc mapping development được cấu hình rõ
-  if (email && DEVELOPMENT_MAPPINGS[email.toLowerCase()]) {
-    return DEVELOPMENT_MAPPINGS[email.toLowerCase()];
+  // 2. Chỉ áp dụng dev role mappings khi NODE_ENV !== "production"
+  if (serverConfig.nodeEnv !== "production" && email) {
+    const devMappings = parseDevRoleMappings(serverConfig.devRoleMappings);
+    const resolvedRole = devMappings[email.toLowerCase()];
+    if (resolvedRole) {
+      return resolvedRole;
+    }
   }
 
   // 3. Mặc định viewer

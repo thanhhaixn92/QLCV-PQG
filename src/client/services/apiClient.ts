@@ -1,34 +1,48 @@
 import { ApiErrorResponse } from "../../shared/contracts/apiContracts";
 import { tokenService } from "../infrastructure/firebase/tokenService";
+import { isMockAuthAllowed } from "../infrastructure/firebase/firebaseClient";
 
 class ApiClient {
   private mockToken: string = "mock-admin";
 
   setMockRole(role: string) {
+    if (!isMockAuthAllowed) {
+      console.warn("apiClient: Đặt vai trò mock bị chặn vì Mock Auth không được bật.");
+      return;
+    }
     this.mockToken = `mock-${role}`;
     // Đồng bộ với local mock user trong hệ thống auth giả lập
-    localStorage.setItem("qlcv_mock_user", JSON.stringify({
-      uid: `mock-uid-${role}`,
-      email: `${role}@qlcv.local`,
-      displayName: `Mock ${role.charAt(0).toUpperCase() + role.slice(1)}`,
-      emailVerified: true,
-      isMock: true,
-      role,
-    }));
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("qlcv_mock_user", JSON.stringify({
+        uid: `mock-uid-${role}`,
+        email: `${role}@qlcv.local`,
+        displayName: `Mock ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+        emailVerified: true,
+        isMock: true,
+        role,
+      }));
+    }
     // Phát sự kiện cập nhật để các trình lắng nghe auth cập nhật theo
-    window.dispatchEvent(new Event("storage"));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("storage"));
+    }
   }
 
   getMockRole(): string {
-    const stored = localStorage.getItem("qlcv_mock_user");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.role) {
-          return parsed.role;
+    if (!isMockAuthAllowed) {
+      return "viewer";
+    }
+    if (typeof localStorage !== "undefined") {
+      const stored = localStorage.getItem("qlcv_mock_user");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.role) {
+            return parsed.role;
+          }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
       }
     }
     return this.mockToken.replace("mock-", "");
@@ -41,9 +55,6 @@ class ApiClient {
       const authHeaders = await tokenService.getAuthorizationHeaders();
       if (authHeaders["Authorization"]) {
         headers.set("Authorization", authHeaders["Authorization"]);
-      } else {
-        // Fallback
-        headers.set("Authorization", `Bearer ${this.mockToken}`);
       }
     }
     headers.set("Content-Type", "application/json");

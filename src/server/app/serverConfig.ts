@@ -12,6 +12,7 @@ export interface ServerConfig {
   googleApplicationCredentials: string | undefined;
   allowedEmailDomains: string[];
   allowMockAuth: boolean;
+  devRoleMappings: string | undefined;
 }
 
 const parseAllowedDomains = (val: string | undefined): string[] => {
@@ -30,6 +31,7 @@ export const serverConfig: ServerConfig = {
   googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
   allowedEmailDomains: parseAllowedDomains(process.env.ALLOWED_EMAIL_DOMAINS),
   allowMockAuth: process.env.ALLOW_MOCK_AUTH === "true",
+  devRoleMappings: process.env.DEV_ROLE_MAPPINGS,
 };
 
 export function validateConfig() {

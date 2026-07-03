@@ -4,7 +4,7 @@ import {
   onAuthStateChanged, 
   User as FirebaseUser 
 } from "firebase/auth";
-import { firebaseAuth, hasClientConfig } from "./firebaseClient";
+import { firebaseAuth, hasClientConfig, isMockAuthAllowed } from "./firebaseClient";
 
 export interface ClientUser {
   uid: string;
@@ -20,26 +20,31 @@ type AuthCallback = (user: ClientUser | null) => void;
 const mockListeners: Set<AuthCallback> = new Set();
 let currentMockUser: ClientUser | null = null;
 
-// Khởi tạo mock user từ localStorage nếu có
-const storedUser = localStorage.getItem("qlcv_mock_user");
-if (storedUser) {
-  try {
-    currentMockUser = JSON.parse(storedUser);
-  } catch {
-    currentMockUser = null;
+// Khởi tạo mock user từ localStorage chỉ khi mock auth được phép
+if (isMockAuthAllowed) {
+  if (typeof localStorage !== "undefined") {
+    const storedUser = localStorage.getItem("qlcv_mock_user");
+    if (storedUser) {
+      try {
+        currentMockUser = JSON.parse(storedUser);
+      } catch {
+        currentMockUser = null;
+      }
+    }
+  }
+} else {
+  // Đảm bảo không còn dữ liệu mock trong localStorage nếu mock không được phép
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem("qlcv_mock_user");
   }
 }
 
 export const loginWithEmailAndPassword = async (email: string, password: string): Promise<any> => {
   if (hasClientConfig && firebaseAuth) {
     return await signInWithEmailAndPassword(firebaseAuth, email, password);
-  } else {
-    // Sinh vai trò giả lập dựa trên email đầu vào để thuận tiện test
-    let role = "viewer";
-    if (email.includes("admin")) role = "admin";
-    else if (email.includes("manager")) role = "manager";
-    else if (email.includes("editor")) role = "editor";
-    else if (email.includes("operator")) role = "operator";
+  } else if (isMockAuthAllowed) {
+    // Không suy ra role từ chuỗi email nữa, mặc định là viewer
+    const role = "viewer";
 
     currentMockUser = {
       uid: `mock-uid-${role}`,
@@ -49,11 +54,15 @@ export const loginWithEmailAndPassword = async (email: string, password: string)
       isMock: true,
       role,
     };
-    localStorage.setItem("qlcv_mock_user", JSON.stringify(currentMockUser));
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("qlcv_mock_user", JSON.stringify(currentMockUser));
+    }
     
     // Phát sự kiện cập nhật
     mockListeners.forEach(cb => cb(currentMockUser));
     return { user: currentMockUser };
+  } else {
+    throw new Error("AUTH_NOT_CONFIGURED: Firebase chưa cấu hình và Mock Auth không được phép hoạt động.");
   }
 };
 
@@ -62,7 +71,9 @@ export const signOutUser = async (): Promise<void> => {
     await fbSignOut(firebaseAuth);
   } else {
     currentMockUser = null;
-    localStorage.removeItem("qlcv_mock_user");
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem("qlcv_mock_user");
+    }
     mockListeners.forEach(cb => cb(null));
   }
 };
@@ -99,20 +110,31 @@ export const onAuthChanged = (callback: AuthCallback): (() => void) => {
         callback(null);
       }
     });
-  } else {
+  } else if (isMockAuthAllowed) {
     mockListeners.add(callback);
     // Gửi sự kiện ban đầu ngay lập tức
     callback(currentMockUser);
     return () => {
       mockListeners.delete(callback);
     };
+  } else {
+    // Khi Firebase chưa cấu hình và mock không bật: hiển thị trạng thái AUTH_NOT_CONFIGURED
+    callback({
+      uid: "auth-not-configured",
+      email: null,
+      displayName: "Auth Not Configured",
+      emailVerified: false,
+      isMock: false,
+      role: "AUTH_NOT_CONFIGURED",
+    });
+    return () => {};
   }
 };
 
 export const getClientAuthToken = async (): Promise<string | null> => {
   if (hasClientConfig && firebaseAuth && firebaseAuth.currentUser) {
     return await firebaseAuth.currentUser.getIdToken(true);
-  } else if (currentMockUser) {
+  } else if (isMockAuthAllowed && currentMockUser) {
     return `mock-${currentMockUser.role}`;
   }
   return null;

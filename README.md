@@ -13,7 +13,7 @@ Hệ thống quản lý công việc, biên tập nội dung, quản lý tài li
 - **Role-Based Access Control (RBAC) (Implemented)**: Hỗ trợ phân quyền người dùng thông minh, bảo mật phân tầng nghiệp vụ theo vai trò.
 - **Correlation ID Tracking (Implemented)**: Tự động đồng bộ hóa mã yêu cầu `requestId` xuyên suốt luồng giao dịch thông qua Middleware thiết lập duy nhất tại biên, lưu nhật ký kiểm toán để dễ dàng theo dấu lỗi.
 - **Fail-safe Infrastructure (Mocked/Simulated)**: Cơ chế giả lập dữ liệu tự động kích hoạt nếu Firestore và Gemini chưa được cấu hình, đảm bảo ứng dụng lõi vẫn hoạt động bình thường mà không gây crash máy chủ.
-  - *Lưu ý*: Các kết nối Firestore và Gemini thật hiện chưa được khởi tạo cho các nghiệp vụ trong giai đoạn này.
+  - *Lưu ý*: Các kết nối Firestore và Gemini thật hiện chưa được khởi tạo cho các nghiệp vụ trong giai đoạn này. Các luật bảo mật Firestore (`firestore.rules`) được thiết lập an toàn mặc định là **deny-all** (`allow read, write: if false;`), ngăn chặn mọi truy cập dữ liệu trực tiếp từ client khi chưa có Data Inventory và Permission Model chính thức.
 
 ## 📁 Cấu trúc Thư mục
 

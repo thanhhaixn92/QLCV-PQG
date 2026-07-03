@@ -1,78 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 1. Mặc định cấm tất cả mọi truy cập (Deny-All by default)
     match /{document=**} {
       allow read, write: if false;
-    }
-
-    // Các hàm trợ giúp kiểm tra phân quyền và xác thực
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isEmailVerified() {
-      return isAuthenticated() && request.auth.token.email_verified == true;
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Rules cho collection 'tasks' (Bảng quản lý công việc)
-    match /tasks/{taskId} {
-      // Chỉ cho phép đọc khi đã đăng nhập và email đã được xác minh thành công
-      allow read: if isEmailVerified();
-
-      // Tạo công việc mới:
-      // - Phải có email đã được xác minh.
-      // - ID người tạo (creatorId) phải khớp với UID của tài khoản thực hiện.
-      // - Validate chặt chẽ các trường bắt buộc (title, status, createdAt, updatedAt).
-      // - Thời gian khởi tạo phải đúng bằng thời gian của request (request.time).
-      allow create: if isEmailVerified()
-        && request.resource.data.creatorId == request.auth.uid
-        && request.resource.data.title is string
-        && request.resource.data.title.size() > 0
-        && request.resource.data.status in ['todo', 'in_progress', 'done', 'backlog']
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
-
-      // Cập nhật công việc:
-      // - Phải có email đã được xác minh.
-      // - Chỉ cho phép người tạo (creatorId) hoặc người được giao (assigneeId) thực hiện.
-      // - Thời gian cập nhật phải khớp với thời gian của request (request.time).
-      // - Không cho phép thay đổi creatorId hoặc thời gian khởi tạo (createdAt) nguyên thủy.
-      allow update: if isEmailVerified()
-        && (resource.data.creatorId == request.auth.uid || resource.data.assigneeId == request.auth.uid)
-        && request.resource.data.updatedAt == request.time
-        && request.resource.data.creatorId == resource.data.creatorId
-        && request.resource.data.createdAt == resource.data.createdAt;
-
-      // Xóa công việc: Chỉ duy nhất người tạo công việc mới được phép xóa
-      allow delete: if isEmailVerified()
-        && resource.data.creatorId == request.auth.uid;
-    }
-
-    // Rules cho collection 'audit_logs' (Nhật ký kiểm toán bảo mật)
-    match /audit_logs/{logId} {
-      // Chỉ cho phép quản trị viên (admin) đọc nhật ký kiểm toán hệ thống
-      allow read: if isEmailVerified() && request.auth.token.role == 'admin';
-
-      // Cho phép tạo log kiểm toán khi email đã xác minh, ghi nhận chính xác actorId và thời gian thực tế
-      allow create: if isEmailVerified()
-        && request.resource.data.actorId == request.auth.uid
-        && request.resource.data.timestamp == request.time;
-
-      // Nhật ký kiểm toán là dữ liệu bất biến (immutable), nghiêm cấm sửa đổi hoặc xóa
-      allow update, delete: if false;
-    }
-
-    // Rules cho collection 'user_profiles' (Hồ sơ người dùng cá nhân)
-    match /user_profiles/{userId} {
-      allow read: if isEmailVerified();
-      // Chỉ chính chủ tài khoản mới được ghi/sửa đổi hồ sơ cá nhân của mình
-      allow write: if isEmailVerified() && isOwner(userId)
-        && request.resource.data.updatedAt == request.time;
     }
   }
 }
