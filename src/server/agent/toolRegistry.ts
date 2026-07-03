@@ -5,6 +5,11 @@ import { logger } from "../infrastructure/logging/logger";
 class ToolRegistryClass {
   private tools = new Map<string, AgentTool>();
 
+  clear() {
+    this.tools.clear();
+    logger.info("ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái).");
+  }
+
   registerTool(tool: AgentTool): boolean {
     if (this.tools.has(tool.name)) {
       logger.error(`ToolRegistry: Trùng lặp tên tool đăng ký: ${tool.name}`);

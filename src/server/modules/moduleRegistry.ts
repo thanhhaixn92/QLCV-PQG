@@ -6,6 +6,11 @@ import { logger } from "../infrastructure/logging/logger";
 class ModuleRegistryClass {
   private modules = new Map<string, RegisteredModule>();
 
+  clear() {
+    this.modules.clear();
+    logger.info("ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái).");
+  }
+
   registerModule(manifestInput: unknown, defaultState: ModuleState = "disabled"): { success: boolean; error?: string } {
     try {
       const parseResult = appModuleManifestSchema.safeParse(manifestInput);
@@ -23,13 +28,6 @@ class ModuleRegistryClass {
         return { success: false, error: errMsg };
       }
 
-      // Detect dependency absences (does not crash core app, logs warning)
-      for (const reqDep of manifest.dependencies.required) {
-        if (!this.modules.has(reqDep)) {
-          logger.warn(`ModuleRegistry: Mô-đun '${manifest.id}' yêu cầu dependency '${reqDep}' nhưng hiện chưa được đăng ký trong hệ thống.`);
-        }
-      }
-
       this.modules.set(manifest.id, {
         manifest,
         state: defaultState
@@ -44,6 +42,27 @@ class ModuleRegistryClass {
     }
   }
 
+  validateDependencies(): { success: boolean; warnings: string[]; errors: string[] } {
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    for (const mod of this.modules.values()) {
+      for (const reqDep of mod.manifest.dependencies.required) {
+        if (!this.modules.has(reqDep)) {
+          const warnMsg = `Mô-đun '${mod.manifest.id}' yêu cầu dependency bắt buộc '${reqDep}' nhưng hiện chưa được đăng ký trong hệ thống.`;
+          logger.warn(`ModuleRegistry: ${warnMsg}`);
+          warnings.push(warnMsg);
+        }
+      }
+    }
+
+    return {
+      success: warnings.length === 0,
+      warnings,
+      errors
+    };
+  }
+
   getModule(id: string): RegisteredModule | undefined {
     return this.modules.get(id);
   }
@@ -56,7 +75,7 @@ class ModuleRegistryClass {
     const mod = this.modules.get(id);
     if (!mod) return false;
     mod.state = state;
-    logger.info(`ModuleRegistry: Mô-đun '${id}' được chuyển trạng thái sang '${state}'`);
+    logger.info(`ModuleRegistry: Mô-đun '${id}' được chuyển trạng thái sang '${state}' (In-memory implementation)`);
     return true;
   }
 }

@@ -2,6 +2,8 @@ import { moduleRegistry } from "../server/modules/moduleRegistry";
 import { toolRegistry } from "../server/agent/toolRegistry";
 import { appModuleManifestSchema } from "../shared/schemas/moduleManifestSchema";
 import { registerAllModules } from "../server/modules/registerModules";
+import { createServer } from "../server/app/createServer";
+import { AppError } from "../shared/errors/appError";
 
 let failed = false;
 
@@ -64,6 +66,21 @@ async function runAllTests() {
 
   // Test Case 3: Tool Registry security
   console.log("\n[TC 3] Kiểm soát công cụ tại Tool Registry:");
+  
+  // Register the mock tool specifically for testing isolation
+  toolRegistry.registerTool({
+    name: "queryTasksTool",
+    moduleId: "tasks-query",
+    risk: "read",
+    requiredPermissions: ["tasks.read"],
+    requiresApproval: false,
+    inputSchema: { type: "object" },
+    outputSchema: { type: "object" },
+    async execute(input, context) {
+      return { success: true, message: "Mock Tasks result", tasks: [] };
+    }
+  });
+
   const userToolsDisabled = toolRegistry.getToolsForUser(["tasks.read"]);
   const hasQueryTasksTool = userToolsDisabled.some(t => t.name === "queryTasksTool");
   assert(!hasQueryTasksTool, "Không truy xuất được công cụ của mô-đun khi mô-đun bị tắt.");
@@ -76,6 +93,54 @@ async function runAllTests() {
   const userToolsNoPerms = toolRegistry.getToolsForUser([]);
   const hasQueryTasksToolNoPerms = userToolsNoPerms.some(t => t.name === "queryTasksTool");
   assert(!hasQueryTasksToolNoPerms, "Ngăn chặn gọi công cụ khi người dùng thiếu quyền hạn.");
+
+  // Test Case 4: Safe Multi-Instantiation
+  console.log("\n[TC 4] Khởi tạo Máy chủ nhiều lần (Safe Multi-Instantiation):");
+  try {
+    const serverInstance1 = await createServer();
+    const serverInstance2 = await createServer();
+    assert(!!serverInstance1 && !!serverInstance2, "Khởi tạo thành công nhiều instance máy chủ mà không gây lỗi hoặc xung đột registry.");
+  } catch (error) {
+    assert(false, `Lỗi khi khởi tạo máy chủ nhiều lần: ${error instanceof Error ? error.message : error}`);
+  }
+
+  // Test Case 5: AppError Status Mapping
+  console.log("\n[TC 5] Kiểm tra Ánh xạ HTTP Status Code của AppError:");
+  const errAuth = new AppError("AUTH_REQUIRED", "Thử nghiệm");
+  const errPerm = new AppError("PERMISSION_DENIED", "Thử nghiệm");
+  const errVal = new AppError("VALIDATION_FAILED", "Thử nghiệm");
+  const errConf = new AppError("DATA_CONFLICT", "Thử nghiệm");
+  const errMod = new AppError("MODULE_UNAVAILABLE", "Thử nghiệm");
+  const errDep = new AppError("DEPENDENCY_UNAVAILABLE", "Thử nghiệm");
+  const errInternal = new AppError("INTERNAL_ERROR", "Thử nghiệm");
+
+  assert(errAuth.getStatusCode() === 401, "AUTH_REQUIRED tương ứng HTTP 401.");
+  assert(errPerm.getStatusCode() === 403, "PERMISSION_DENIED tương ứng HTTP 403.");
+  assert(errVal.getStatusCode() === 400, "VALIDATION_FAILED tương ứng HTTP 400.");
+  assert(errConf.getStatusCode() === 409, "DATA_CONFLICT tương ứng HTTP 409.");
+  assert(errMod.getStatusCode() === 503, "MODULE_UNAVAILABLE tương ứng HTTP 503.");
+  assert(errDep.getStatusCode() === 503, "DEPENDENCY_UNAVAILABLE tương ứng HTTP 503.");
+  assert(errInternal.getStatusCode() === 500, "INTERNAL_ERROR tương ứng HTTP 500.");
+
+  // Test Case 6: Post-Registration Dependency Validation
+  console.log("\n[TC 6] Kiểm tra Hậu kiểm thử phụ thuộc (Dependency Validation):");
+  // Register a module missing its dependency
+  moduleRegistry.registerModule({
+    id: "dependent-module",
+    displayName: "Mô-đun phụ thuộc",
+    description: "Cần dependency chưa có",
+    routes: [],
+    requiredPermissions: [],
+    dependencies: {
+      required: ["missing-dependency-id"],
+      optional: []
+    },
+    tools: []
+  }, "disabled");
+
+  const validationResult = moduleRegistry.validateDependencies();
+  assert(!validationResult.success, "Dependency validation trả về thất bại khi thiếu dependency bắt buộc.");
+  assert(validationResult.warnings.length > 0, "Trả về cảnh báo có cấu trúc khi phát hiện thiếu dependency.");
 
   console.log("\n=================================================");
   if (failed) {
