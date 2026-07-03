@@ -324,14 +324,35 @@ export class FixtureTaskQueryRepository implements TaskQueryRepository {
     if (isAdmin) {
       // Admin sees everything
     } else if (hasDeptPermission) {
-      // Department permission: only see tasks in authorized departmentIds
       const authorizedDepts = context.departmentIds ?? [];
-      allowedTasks = allowedTasks.filter(
-        (t) => t.departmentId && authorizedDepts.includes(t.departmentId)
-      );
+      if (authorizedDepts.length === 0) {
+        allowedTasks = [];
+      } else if (authorizedDepts.length > 10) {
+        throw new AppError(
+          "VALIDATION_FAILED",
+          "Truy cập đồng thời trên hơn 10 phòng ban hiện chưa được hệ thống hỗ trợ."
+        );
+      } else {
+        if (query.departmentId) {
+          if (!authorizedDepts.includes(query.departmentId)) {
+            throw new AppError(
+              "PERMISSION_DENIED",
+              "Bạn không có quyền truy cập dữ liệu của phòng ban được yêu cầu."
+            );
+          }
+        }
+        allowedTasks = allowedTasks.filter(
+          (t) => t.departmentId && authorizedDepts.includes(t.departmentId)
+        );
+      }
     } else if (hasReadPermission) {
-      // Normal user: only see tasks they created or are assigned to
-      const actorUid = context.actorUid;
+      const actorUid = context.actorUid || "anonymous";
+      if (query.assigneeUid && query.assigneeUid !== actorUid) {
+        throw new AppError(
+          "PERMISSION_DENIED",
+          "Bạn không có quyền truy cập công việc của người dùng khác."
+        );
+      }
       allowedTasks = allowedTasks.filter(
         (t) => t.creator?.uid === actorUid || t.assignee?.uid === actorUid
       );

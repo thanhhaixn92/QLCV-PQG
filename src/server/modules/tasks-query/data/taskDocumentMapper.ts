@@ -1,7 +1,7 @@
 import { TaskSummary, TaskStatus, TaskPriority } from "../../../../shared/contracts/tasks/taskContracts";
 
 export const taskDocumentMapper = {
-  map(docId: string, docData: any, source: "firestore" | "fixture"): TaskSummary | null {
+  map(docId: string, docData: Record<string, unknown> | null | undefined, source: "firestore" | "fixture"): TaskSummary | null {
     if (!docId || typeof docId !== "string" || !docId.trim()) {
       return null;
     }
@@ -31,15 +31,16 @@ export const taskDocumentMapper = {
     let priority: TaskPriority | null = null;
     const rawPriority = docData.priority;
     if (rawPriority === "high" || rawPriority === "medium" || rawPriority === "low") {
-      priority = rawPriority;
+      priority = rawPriority as TaskPriority;
     }
 
     // Safely map assignee
     let assignee: { uid?: string; displayName?: string } | null = null;
     if (docData.assignee && typeof docData.assignee === "object") {
+      const assObj = docData.assignee as Record<string, unknown>;
       assignee = {
-        uid: docData.assignee.uid ? String(docData.assignee.uid) : undefined,
-        displayName: docData.assignee.displayName ? String(docData.assignee.displayName) : undefined
+        uid: assObj.uid ? String(assObj.uid) : undefined,
+        displayName: assObj.displayName ? String(assObj.displayName) : undefined
       };
     } else if (typeof docData.assignee === "string") {
       // legacy support
@@ -56,9 +57,10 @@ export const taskDocumentMapper = {
     // Safely map creator
     let creator: { uid?: string; displayName?: string } | null = null;
     if (docData.creator && typeof docData.creator === "object") {
+      const creObj = docData.creator as Record<string, unknown>;
       creator = {
-        uid: docData.creator.uid ? String(docData.creator.uid) : undefined,
-        displayName: docData.creator.displayName ? String(docData.creator.displayName) : undefined
+        uid: creObj.uid ? String(creObj.uid) : undefined,
+        displayName: creObj.displayName ? String(creObj.displayName) : undefined
       };
     } else if (docData.creatorUid) {
       creator = {
@@ -72,16 +74,19 @@ export const taskDocumentMapper = {
     }
 
     // Safely parse timestamps
-    const parseTimestamp = (ts: any): string | null => {
+    const parseTimestamp = (ts: unknown): string | null => {
       if (!ts) return null;
-      if (typeof ts.toDate === "function") {
-        return ts.toDate().toISOString();
+      if (typeof ts === "object" && ts !== null) {
+        const tsObj = ts as Record<string, unknown>;
+        if (typeof tsObj.toDate === "function") {
+          return (tsObj.toDate as () => Date)().toISOString();
+        }
+        if (tsObj._seconds !== undefined) {
+          return new Date(Number(tsObj._seconds) * 1000).toISOString();
+        }
       }
       if (ts instanceof Date) {
         return ts.toISOString();
-      }
-      if (typeof ts === "object" && ts._seconds !== undefined) {
-        return new Date(ts._seconds * 1000).toISOString();
       }
       const parsed = Date.parse(String(ts));
       if (!isNaN(parsed)) {

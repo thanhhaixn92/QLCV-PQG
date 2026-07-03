@@ -1,11 +1,18 @@
 # Tasks Data Inventory (QLCV_PQG Next)
 
-Tài liệu này kiểm kê và phân loại các trường dữ liệu của đối tượng công việc (Tasks) từ hệ thống cũ, làm cơ sở xây dựng Adapter cho mô-đun `tasks-query` độc lập và an toàn.
+Tài liệu này kiểm kê và phân loại các trường dữ liệu của đối tượng công việc (Tasks), đồng thời ghi nhận kết quả xác minh tích hợp thành công với Firestore thực tế trong Milestone G5.
 
-## 1. Trạng thái Collection Nguồn
-*   **Tên Collection Dự kiến (Inferred):** `tasks`
-*   **Kiểm chứng:** Chưa được xác thực 100% từ cơ sở dữ liệu thật của dự án sản xuất.
-*   **Giải pháp an toàn (G4):** Không hardcode tên collection. Bắt buộc cấu hình qua biến môi trường `TASKS_COLLECTION`. Nếu thiếu cấu hình này trong môi trường Production, hệ thống sẽ rơi vào trạng thái lỗi `DEPENDENCY_UNAVAILABLE` thay vì tự ý kết nối bừa bãi.
+## 1. Trạng thái Collection Nguồn & Kết Quả Xác Minh (G5 Verified)
+*   **Tên Collection Nguồn:** `tasks` (Cấu hình qua `TASKS_COLLECTION`).
+*   **Trạng thái Xác minh:** **ĐÃ XÁC MINH THÀNH CÔNG (G5 Verified)**.
+*   **Môi trường thực tế:**
+    *   Firestore Database ID: `(default)` (Cấu hình qua `FIREBASE_DATABASE_ID`).
+    *   Timestamp Mode: `firestore` (Cấu hình qua `TASKS_TIMESTAMP_MODE`).
+    *   Dữ liệu mẫu (Seed Document): Mã định danh `Yo0XhjSwLwsPeSO8JdBe` được tạo bằng `scripts/seedTask.ts` với khóa chống trùng lặp `seedKey: "initial-test-task"`.
+*   **Giải pháp kết nối an toàn:** 
+    *   Hệ thống hỗ trợ lựa chọn nguồn dữ liệu tường minh thông qua biến `TASKS_QUERY_SOURCE` (`firestore` hoặc `fixture`).
+    *   Mặc định trong môi trường production luôn tự động chọn `firestore` (nếu thiếu cấu hình sẽ ném lỗi `DEPENDENCY_UNAVAILABLE` thay vì fallback âm thầm).
+    *   Trong môi trường test, hệ thống cô lập triệt để và sử dụng `fixture` để bảo vệ an toàn cho Firestore thật.
 
 ---
 
@@ -15,32 +22,33 @@ Tài liệu này kiểm kê và phân loại các trường dữ liệu của đ
 Các trường bắt buộc phải có để hiển thị cơ bản, khớp trực tiếp với API Contract:
 *   `id` (string): Mã định danh duy nhất của công việc.
 *   `title` (string): Tiêu đề công việc.
-
-### B. Nhóm Suy luận (Inferred)
-Các trường suy luận dựa trên cấu trúc nghiệp vụ của hệ thống quản lý công việc và yêu cầu phân trang/lọc:
-*   `status` (string): Trạng thái công việc. Giá trị nghiệp vụ cũ có thể là `"completed"`, `"pending"`, `"todo"`, `"in_progress"`. Sẽ được ánh xạ về `TaskStatus` tiêu chuẩn (`"todo" | "in_progress" | "completed" | "backlog"`).
+*   `status` (string): Trạng thái công việc (`"todo" | "in_progress" | "completed" | "backlog"`).
 *   `priority` (string/null): Độ ưu tiên (`"low" | "medium" | "high" | null`).
-*   `assigneeUid` (string/null): UID người nhận việc.
-*   `assigneeName` (string/null): Tên hiển thị của người nhận việc (dùng để điền thông tin `assignee.displayName`).
-*   `creatorUid` (string/null): UID người tạo công việc.
-*   `creatorName` (string/null): Tên hiển thị của người tạo công việc (dùng để điền thông tin `creator.displayName`).
-*   `departmentId` (string/null): Mã đơn vị/phòng ban sở hữu công việc.
-*   `dueAt` (Timestamp/string/null): Hạn chót công việc.
-*   `createdAt` (Timestamp/string/null): Thời điểm tạo.
-*   `updatedAt` (Timestamp/string/null): Thời điểm cập nhật cuối cùng.
 
-### C. Nhóm Chưa rõ (Unknown)
-*   Cấu trúc phân cấp cụ thể của sub-tasks (nếu có).
-*   Các trường liên quan tới tệp đính kèm (`attachments`) và bình luận (`comments`).
+### B. Nhóm Hỗ trợ Cấu Trúc Đa Dạng (Flexible Document Schema)
+Trình biên dịch (Mapper) được thiết kế tương thích ngược hoàn hảo cả cấu trúc phẳng (flat) từ hệ thống cũ lẫn cấu trúc lồng nhau (nested) hiện đại:
+*   **Cấu trúc lồng nhau (Nested):**
+    *   `assignee.uid`, `assignee.displayName`
+    *   `creator.uid`, `creator.displayName`
+*   **Cấu trúc phẳng (Flat - Legacy):**
+    *   `assigneeUid`, `assigneeName` -> Tự động ánh xạ về `assignee.uid`, `assignee.displayName`.
+    *   `creatorUid`, `creatorName` -> Tự động ánh xạ về `creator.uid`, `creator.displayName`.
+*   **Hạn chót & Thời gian:**
+    *   `dueAt`, `createdAt`, `updatedAt` tự động chuyển đổi an toàn từ Firestore `Timestamp` hoặc chuỗi `ISO string` thành định dạng chuỗi chuẩn ISO 8601 UTC.
 
-### D. Nhóm Kế thừa / Khuyên bỏ (Legacy / Deprecated)
-*   `assignee` (string) dạng plain-text: Phiên bản cũ chỉ lưu tên assignee kiểu chuỗi đơn giản (`assignee: "Principal Architect"`). Nên chuyển sang cấu trúc object `assignee: { uid, displayName }`.
-*   `isCompleted` (boolean): Tránh sử dụng boolean đơn lẻ cho trạng thái; thay bằng trường `status` đa trạng thái.
+### C. Nhóm Phục vụ Đồng bộ / Vận hành Nội bộ
+*   `seedKey` (string): Dùng để nhận diện bản ghi mẫu và tránh tạo trùng lắp dữ liệu khi seed. Trường này được mapper cô lập hoàn toàn và **bảo đảm không bao giờ bị trả ra qua các API công khai**.
 
 ---
 
-## 3. Rào cản Kỹ thuật và Giả định Chặn (Blocking Assumptions)
-1.  **Chế độ mặc định trong CI/Test:** Do chưa có kết nối Firestore thật trong quá trình kiểm thử CI, toàn bộ các ca kiểm thử và chế độ chạy phát triển local khi chưa có cấu hình sẽ sử dụng `FixtureTaskQueryRepository` (source = `fixture`).
-2.  **Kích hoạt Firestore:** Chỉ kích hoạt `FirestoreTaskQueryRepository` khi có đầy đủ:
-    *   Firebase Admin khởi tạo thành công (`ready` hoặc `initialized`).
-    *   Biến môi trường `TASKS_COLLECTION` được khai báo rõ ràng.
+## 3. Chính sách Bảo mật & Ràng buộc RBAC
+Hệ thống kiểm soát truy cập trực tiếp từ máy chủ (Server-side RBAC/RLS) thông qua phân quyền của Firebase Auth token:
+1.  **Quyền Quản trị (`admin` / `tasks.manage`):** Cho phép truy cập toàn bộ danh sách công việc mà không bị giới hạn phòng ban hay chủ sở hữu.
+2.  **Quyền Phòng ban (`tasks.department`):** Giới hạn chỉ hiển thị các công việc thuộc phòng ban được ủy quyền trong thuộc tính `departmentIds`. Truy cập phòng ban trái phép sẽ bị chặn ngay lập tức và trả về lỗi `PERMISSION_DENIED`.
+3.  **Quyền Người dùng cá nhân (`tasks.read`):** Chỉ hiển thị các công việc do chính người dùng đó tạo (`creator.uid`) hoặc được giao (`assignee.uid`). Mọi hành vi cố tình truy vấn UID khác qua query parameters sẽ bị máy chủ chặn bằng lỗi `PERMISSION_DENIED`.
+
+---
+
+## 4. Kiểm soát An toàn Thông tin Lỗi (Technical Leak Protection)
+*   Khi xảy ra lỗi thiếu composite index trong Firestore (Error Code 9 - `FAILED_PRECONDITION`), máy chủ sẽ ghi nhận URL tạo chỉ mục vào nhật ký audit nội bộ (chỉ dành cho Sysadmin điều hành), đồng thời ẩn thông tin nhạy cảm này trước client bằng cách biến đổi lỗi thành thông điệp chung: *"Truy vấn công việc hiện chưa được hệ thống hỗ trợ đầy đủ."* dưới mã lỗi `DEPENDENCY_UNAVAILABLE`.
+
