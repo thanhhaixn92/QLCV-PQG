@@ -33,7 +33,7 @@ export async function createServer() {
 
   app.use("/api", apiRouter);
 
-  app.use((err: any, req: AppRequest, res: Response, next: NextFunction) => {
+  app.use((err: unknown, req: AppRequest, res: Response, next: NextFunction) => {
     const requestId = req.requestId || "unknown";
     
     if (err instanceof AppError) {
@@ -42,7 +42,8 @@ export async function createServer() {
       return;
     }
 
-    logger.error("Internal Server Error Unhandled", err, { requestId });
+    const isError = err instanceof Error;
+    logger.error("Internal Server Error Unhandled", isError ? err : new Error(String(err)), { requestId });
     res.status(500).json({
       error: {
         code: "INTERNAL_ERROR",

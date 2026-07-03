@@ -42,7 +42,7 @@ export function App() {
         reqId: "req-" + Math.random().toString(36).substring(4)
       };
       setAudits(prev => [newAudit, ...prev].slice(0, 5));
-    } catch (err: any) {
+    } catch (error: unknown) {
       setError("Không thể tải cấu hình từ máy chủ.");
     } finally {
       setLoading(false);
@@ -69,11 +69,11 @@ export function App() {
       setLoading(true);
       const targetState = currentState ? "disabled" : "enabled";
       await apiClient.request(`/api/admin/modules/${moduleId}/state`, {
-        method: "POST",
+        method: "PUT",
         body: JSON.stringify({ state: targetState })
       });
       await loadConfigAndAudits(true);
-    } catch (err: any) {
+    } catch (error: unknown) {
       // Log failed audit
       const failedAudit: AuditLogItem = {
         id: Math.random().toString(36).substring(7),
@@ -83,7 +83,8 @@ export function App() {
         reqId: "req-" + Math.random().toString(36).substring(4)
       };
       setAudits(prev => [failedAudit, ...prev].slice(0, 5));
-      alert(`Lỗi thực thi từ server: ${err.message}`);
+      const message = error instanceof Error ? error.message : "Không thể thay đổi trạng thái module";
+      alert(`Lỗi thực thi từ server: ${message}`);
     } finally {
       setLoading(false);
     }

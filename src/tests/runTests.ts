@@ -2219,84 +2219,79 @@ async function runAllTests() {
     assert(false, `TC-G5-05 Thất bại: ${error}`);
   }
 
-  // TC-G5-06: Ẩn thông tin nhạy cảm của lỗi chỉ mục Firestore (Missing Index) với Client
+  // TC-G5-06: Ẩn thông tin nhạy cảm của lỗi chỉ mục Firestore (Missing Index) với Client thông qua helper mapFirestoreError
   try {
-    const { FirestoreTaskQueryRepository } = await import("../server/modules/tasks-query/data/firestoreTaskQueryRepository");
+    const { mapFirestoreError } = await import("../server/modules/tasks-query/data/firestoreTaskQueryErrorMapper");
     
-    let isSecureError = false;
+    // 1. Simulate a missing composite index error
+    const fakeMissingIndexError: any = new Error("FAILED_PRECONDITION: The query requires an index. Create it here: https://console.firebase.google.com/project/123/database/firestore/indexes?create_composite=12345");
+    fakeMissingIndexError.code = 9;
+
+    let isSecureMissingIndexError = false;
     try {
-      const originalCollection = process.env.TASKS_COLLECTION;
-      process.env.TASKS_COLLECTION = "tasks";
-      
-      const repo = new FirestoreTaskQueryRepository();
-      
-      // Simulate getting a missing composite index error
-      const fakeError: any = new Error("FAILED_PRECONDITION: The query requires an index. Create it here: https://console.firebase.google.com/project/123/database/firestore/indexes?create_composite=12345");
-      fakeError.code = 9;
-
-      // Force-wrap simulated error
-      const mockQueryRef: any = {
-        select: () => mockQueryRef,
-        where: () => mockQueryRef,
-        orderBy: () => mockQueryRef,
-        limit: () => mockQueryRef,
-        get: () => { throw fakeError; }
-      };
-
-      // We bypass using getTaskQueryRepository to isolate this test
-      const originalGetConfiguredFirestore = (await import("../server/infrastructure/firebase/firebaseAdmin")).getConfiguredFirestore;
-      // We transiently mock the collection to throw
-      const dbMock: any = {
-        collection: () => ({
-          select: () => mockQueryRef
-        })
-      };
-
-      // Since we can't easily mock imported functions directly, let's test the error wrapper pattern from line 295:
-      const errorHandlerSimulate = (err: any) => {
-        if (err && (err.code === 9 || (typeof err.message === "string" && err.message.includes("FAILED_PRECONDITION")))) {
-          const match = typeof err.message === "string" ? err.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/) : null;
-          const indexUrl = match ? match[0] : null;
-          // Returns safe error
-          throw new AppError(
-            "DEPENDENCY_UNAVAILABLE",
-            "Truy vấn công việc hiện chưa được hệ thống hỗ trợ đầy đủ."
-          );
-        }
-      };
-
-      try {
-        errorHandlerSimulate(fakeError);
-      } catch (wrappedErr: any) {
-        if (wrappedErr.code === "DEPENDENCY_UNAVAILABLE" && !wrappedErr.message.includes("https://console.firebase.google.com")) {
-          isSecureError = true;
-        }
+      throw mapFirestoreError(fakeMissingIndexError, "TestContext");
+    } catch (mappedErr: any) {
+      if (
+        mappedErr.code === "DEPENDENCY_UNAVAILABLE" &&
+        mappedErr.message === "Truy vấn công việc hiện chưa được hệ thống hỗ trợ đầy đủ." &&
+        !mappedErr.message.includes("https://console.firebase.google.com")
+      ) {
+        isSecureMissingIndexError = true;
       }
+    }
 
-      if (originalCollection !== undefined) {
-        process.env.TASKS_COLLECTION = originalCollection;
-      } else {
-        delete process.env.TASKS_COLLECTION;
+    // 2. Simulate a generic Firestore error
+    const fakeGenericError = new Error("DEADLINE_EXCEEDED: gRPC connection failed");
+    let isSecureGenericError = false;
+    try {
+      throw mapFirestoreError(fakeGenericError, "TestContext");
+    } catch (mappedErr: any) {
+      if (
+        mappedErr.code === "DEPENDENCY_UNAVAILABLE" &&
+        mappedErr.message === "Dịch vụ lưu trữ Firestore gặp sự cố truy vấn tại thời điểm này." &&
+        !mappedErr.message.includes("gRPC")
+      ) {
+        isSecureGenericError = true;
       }
-    } catch {}
+    }
 
-    assert(isSecureError, "TC-G5-06: Lỗi lỗi chỉ mục phải được biến đổi an toàn trước khi trả về Client.");
-    console.log("   [PASSED] TC-G5-06: Che giấu thông tin lỗi kỹ thuật (URL chỉ mục Firestore) thành công.");
+    assert(
+      isSecureMissingIndexError && isSecureGenericError,
+      "TC-G5-06: Lỗi chỉ mục và lỗi chung phải được biến đổi an toàn trước khi trả về Client thông qua helper mapFirestoreError."
+    );
+    console.log("   [PASSED] TC-G5-06: Che giấu thông tin lỗi kỹ thuật (URL chỉ mục Firestore) thành công bằng production mapper.");
   } catch (error) {
     assert(false, `TC-G5-06 Thất bại: ${error}`);
   }
 
   // TC-G5-07: Kiểm thử tích hợp HTTP End-to-End (G5.1 E2E)
   console.log("\n[KIỂM THỬ G5.1: HTTP END-TO-END VERIFICATION]");
+  let originalSource: string | undefined;
+  let hasSetRepo = false;
   try {
     const { createServer } = await import("../server/app/createServer");
     const request = (await import("supertest")).default;
+    const { setModuleStateRepository, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    const { InMemoryModuleStateRepository } = await import("../server/modules/state/inMemoryModuleStateRepository");
+    const { moduleStateService } = await import("../server/modules/moduleStateService");
 
-    const originalSource = process.env.TASKS_QUERY_SOURCE;
+    originalSource = process.env.TASKS_QUERY_SOURCE;
     process.env.TASKS_QUERY_SOURCE = "fixture";
     
     const { resetTaskQueryRepository } = await import("../server/modules/tasks-query/data/taskQueryRepository");
     resetTaskQueryRepository();
+
+    // Isolated repo for G5-07 so it doesn't leak or depend on outside state
+    const isolatedRepo = new InMemoryModuleStateRepository();
+    await isolatedRepo.set({
+      moduleId: "tasks-query",
+      state: "enabled",
+      updatedBy: "test-setup-G5-07"
+    });
+    
+    setModuleStateRepository(isolatedRepo, "in-memory");
+    hasSetRepo = true;
+    moduleStateService.resetHydrationState();
 
     const app = await createServer();
 
@@ -2348,16 +2343,27 @@ async function runAllTests() {
       .expect(403);
     assert(operatorBlockedRes.body.error?.code === "PERMISSION_DENIED", "G5.1-HTTP: Operator xem công việc của người khác trực tiếp qua query params phải bị chặn.");
 
+    console.log("   [PASSED] TC-G5-07: Toàn bộ kiểm thử HTTP End-to-End với Authentication, RBAC và Envelope thành công.");
+  } catch (error) {
+    assert(false, `TC-G5-07 Thất bại: ${error}`);
+  } finally {
     if (originalSource !== undefined) {
       process.env.TASKS_QUERY_SOURCE = originalSource;
     } else {
       delete process.env.TASKS_QUERY_SOURCE;
     }
+    const { resetTaskQueryRepository } = await import("../server/modules/tasks-query/data/taskQueryRepository");
     resetTaskQueryRepository();
 
-    console.log("   [PASSED] TC-G5-07: Toàn bộ kiểm thử HTTP End-to-End với Authentication, RBAC và Envelope thành công.");
-  } catch (error) {
-    assert(false, `TC-G5-07 Thất bại: ${error}`);
+    if (hasSetRepo) {
+      const { resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+      resetRepositoryMode();
+      const { setModuleStateRepository } = await import("../server/modules/state/moduleStateRepository");
+      const { InMemoryModuleStateRepository } = await import("../server/modules/state/inMemoryModuleStateRepository");
+      const { moduleStateService } = await import("../server/modules/moduleStateService");
+      setModuleStateRepository(new InMemoryModuleStateRepository(), "in-memory");
+      moduleStateService.resetHydrationState();
+    }
   }
 
 

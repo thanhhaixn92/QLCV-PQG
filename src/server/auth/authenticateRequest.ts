@@ -4,6 +4,7 @@ import { serverConfig } from "../app/serverConfig";
 import { AppError } from "../../shared/errors/appError";
 import { resolveUserRole } from "./userRoleResolver";
 import { verifyIdToken } from "../infrastructure/firebase/firebaseAdmin";
+import { DecodedIdToken } from "firebase-admin/auth";
 import { UserRole } from "../../shared/permissions/permissions";
 import crypto from "crypto";
 
@@ -72,7 +73,7 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
 
     // 2. Với token không phải mock: bắt buộc gọi Firebase Admin verifyIdToken
     try {
-      const decodedToken = await verifyIdToken(token);
+      const decodedToken = await verifyIdToken(token) as DecodedIdToken;
       
       // Ánh xạ vai trò người dùng (user role resolver)
       const role = resolveUserRole(decodedToken, req.requestId);

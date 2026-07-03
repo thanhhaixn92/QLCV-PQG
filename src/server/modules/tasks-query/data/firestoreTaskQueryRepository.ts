@@ -8,11 +8,7 @@ import { taskDocumentMapper } from "./taskDocumentMapper";
 import { taskCursor } from "./taskCursor";
 import { logger } from "../../../infrastructure/logging/logger";
 import { serverConfig } from "../../../app/serverConfig";
-
-interface FirestoreErrorLike {
-  code?: number;
-  message?: string;
-}
+import { mapFirestoreError } from "./firestoreTaskQueryErrorMapper";
 
 export class FirestoreTaskQueryRepository implements TaskQueryRepository {
   private collectionName: string;
@@ -292,28 +288,7 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
         source: "firestore"
       };
     } catch (error: unknown) {
-      const err = error as FirestoreErrorLike;
-
-      // Handle Missing Composite Index
-      if (err && (err.code === 9 || (typeof err.message === "string" && err.message.includes("FAILED_PRECONDITION")))) {
-        const match = typeof err.message === "string" ? err.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/) : null;
-        const indexUrl = match ? match[0] : null;
-
-        logger.error(
-          `FirestoreTaskQueryRepository: Thiếu index composite cho truy vấn này. URL tạo: ${indexUrl || "N/A"}. Lỗi gốc: ${err.message}`
-        );
-        throw new AppError(
-          "DEPENDENCY_UNAVAILABLE",
-          "Truy vấn công việc hiện chưa được hệ thống hỗ trợ đầy đủ."
-        );
-      }
-
-      const errMsg = error instanceof Error ? error.message : String(error);
-      logger.error(`FirestoreTaskQueryRepository: Lỗi truy vấn Firestore: ${errMsg}`);
-      throw new AppError(
-        "DEPENDENCY_UNAVAILABLE",
-        "Dịch vụ lưu trữ Firestore gặp sự cố truy vấn tại thời điểm này."
-      );
+      throw mapFirestoreError(error, "FirestoreTaskQueryRepository (list)");
     }
   }
 
@@ -354,12 +329,7 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
 
       return null;
     } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      logger.error(`FirestoreTaskQueryRepository: Lỗi getById từ Firestore: ${errMsg}`);
-      throw new AppError(
-        "DEPENDENCY_UNAVAILABLE",
-        "Dịch vụ lưu trữ Firestore gặp sự cố truy vấn tại thời điểm này."
-      );
+      throw mapFirestoreError(error, "FirestoreTaskQueryRepository (getById)");
     }
   }
 }

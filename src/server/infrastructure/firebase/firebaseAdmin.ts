@@ -1,5 +1,5 @@
 import { getApps, initializeApp, App, cert, applicationDefault, deleteApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+import { getAuth, DecodedIdToken } from "firebase-admin/auth";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
 import { serverConfig } from "../../app/serverConfig";
 import { AppError } from "../../../shared/errors/appError";
@@ -19,9 +19,9 @@ let isProbed = false;
 let isStatusOverridden = false;
 
 // Mock verifier for isolated unit/integration tests without secrets
-let mockTokenVerifier: ((token: string) => Promise<any>) | null = null;
+let mockTokenVerifier: ((token: string) => Promise<DecodedIdToken | Record<string, unknown>>) | null = null;
 
-export function setMockTokenVerifier(verifier: ((token: string) => Promise<any>) | null) {
+export function setMockTokenVerifier(verifier: ((token: string) => Promise<DecodedIdToken | Record<string, unknown>>) | null) {
   mockTokenVerifier = verifier;
 }
 
@@ -118,9 +118,9 @@ export function initFirebaseAdmin(): App | null {
 
     adminStatus = "not-configured";
     return null;
-  } catch (error: any) {
+  } catch (error: unknown) {
     adminStatus = "error";
-    initErrorMsg = error?.message || String(error);
+    initErrorMsg = error instanceof Error ? error.message : String(error);
     console.error("Firebase Admin initialization error:", error);
     return null;
   }
@@ -203,7 +203,7 @@ export const getFirebaseStatus = (): FirebaseConnectionStatus => {
   };
 };
 
-export async function verifyIdToken(token: string): Promise<any> {
+export async function verifyIdToken(token: string): Promise<DecodedIdToken | Record<string, unknown>> {
   if (mockTokenVerifier) {
     return await mockTokenVerifier(token);
   }
