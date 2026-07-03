@@ -42,7 +42,7 @@ class SimulatedFirestore {
 export const firestoreClient = {
   getFirestore() {
     const status = getFirebaseStatus();
-    if (status.isMock) {
+    if (status.status === "mocked" || status.status !== "ready") {
       logger.info("FirestoreClient: Sử dụng database giả lập do chưa cấu hình Firestore.");
     } else {
       logger.info(`FirestoreClient: Đã cấu hình Firebase. Database ID: ${status.databaseId}`);

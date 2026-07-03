@@ -4,6 +4,8 @@ import { appModuleManifestSchema } from "../shared/schemas/moduleManifestSchema"
 import { registerAllModules } from "../server/modules/registerModules";
 import { createServer } from "../server/app/createServer";
 import { AppError } from "../shared/errors/appError";
+import { serverConfig } from "../server/app/serverConfig";
+import { setMockTokenVerifier } from "../server/infrastructure/firebase/firebaseAdmin";
 import request from "supertest";
 
 let failed = false;
@@ -21,6 +23,10 @@ async function runAllTests() {
   console.log("=================================================");
   console.log("   BẮT ĐẦU CHẠY CÁC CA KIỂM THỬ TỰ ĐỘNG - QLCV   ");
   console.log("=================================================");
+
+  // Thiết lập mặc định cho môi trường chạy test sử dụng Mock Auth
+  serverConfig.allowMockAuth = true;
+  serverConfig.nodeEnv = "development";
 
   // Helper to reset and obtain a clean application instance
   async function getCleanApp() {
@@ -318,6 +324,257 @@ async function runAllTests() {
   } catch (error) {
     assert(false, `TC-12 Thất bại: ${error}`);
   }
+
+
+  // --- FIREBASE INTEGRATION TESTS (TC-FB-01 TO TC-FB-08) ---
+
+  console.log("\n[KIỂM THỬ TÍCH HỢP FIREBASE (TC-FB-01 ĐẾN TC-FB-08)]");
+
+  const originalNodeEnv = serverConfig.nodeEnv;
+  const originalAllowMockAuth = serverConfig.allowMockAuth;
+  const originalAllowedDomains = serverConfig.allowedEmailDomains;
+
+  // Helper dọn dẹp biến môi trường sau mỗi test
+  function resetEnvConfigs() {
+    serverConfig.nodeEnv = originalNodeEnv;
+    serverConfig.allowMockAuth = originalAllowMockAuth;
+    serverConfig.allowedEmailDomains = originalAllowedDomains;
+    setMockTokenVerifier(null);
+  }
+
+  // TC-FB-01: Mock token bị từ chối khi ALLOW_MOCK_AUTH không phải true
+  try {
+    const app = await getCleanApp();
+    serverConfig.allowMockAuth = false;
+    serverConfig.nodeEnv = "development";
+    
+    const res = await request(app)
+      .get("/api/modules/tasks-query/tasks")
+      .set("Authorization", "Bearer mock-admin");
+    assert(
+      res.status === 401 && res.body?.error?.code === "AUTH_REQUIRED",
+      "TC-FB-01: Mock token bị từ chối (HTTP 401) khi ALLOW_MOCK_AUTH = false."
+    );
+  } catch (error) {
+    assert(false, `TC-FB-01 Thất bại: ${error}`);
+  } finally {
+    resetEnvConfigs();
+  }
+
+  // TC-FB-02: Mock token bị từ chối khi NODE_ENV=production
+  try {
+    const app = await getCleanApp();
+    serverConfig.allowMockAuth = true;
+    serverConfig.nodeEnv = "production";
+    
+    const res = await request(app)
+      .get("/api/modules/tasks-query/tasks")
+      .set("Authorization", "Bearer mock-admin");
+    assert(
+      res.status === 401 && res.body?.error?.code === "AUTH_REQUIRED",
+      "TC-FB-02: Mock token bị từ chối (HTTP 401) khi NODE_ENV = production."
+    );
+  } catch (error) {
+    assert(false, `TC-FB-02 Thất bại: ${error}`);
+  } finally {
+    resetEnvConfigs();
+  }
+
+  // TC-FB-03: Mock token hợp lệ trong development khi ALLOW_MOCK_AUTH=true
+  try {
+    const app = await getCleanApp();
+    serverConfig.allowMockAuth = true;
+    serverConfig.nodeEnv = "development";
+    moduleRegistry.updateModuleState("tasks-query", "enabled");
+    
+    const res = await request(app)
+      .get("/api/modules/tasks-query/tasks")
+      .set("Authorization", "Bearer mock-admin");
+    assert(
+      res.status === 200 && res.body?.success === true,
+      "TC-FB-03: Mock token hợp lệ trong development khi ALLOW_MOCK_AUTH = true."
+    );
+  } catch (error) {
+    assert(false, `TC-FB-03 Thất bại: ${error}`);
+  } finally {
+    resetEnvConfigs();
+  }
+
+  // TC-FB-04: Bearer token ngẫu nhiên không còn được chấp nhận như simulated viewer
+  try {
+    const app = await getCleanApp();
+    serverConfig.allowMockAuth = false;
+    serverConfig.nodeEnv = "development";
+    setMockTokenVerifier(null);
+    
+    const res = await request(app)
+      .get("/api/modules/tasks-query/tasks")
+      .set("Authorization", "Bearer random-token-123");
+    assert(
+      res.status === 401 && res.body?.error?.code === "AUTH_REQUIRED",
+      "TC-FB-04: Token ngẫu nhiên bị từ chối truy cập (không được tự động chấp nhận làm user simulated)."
+    );
+  } catch (error) {
+    assert(false, `TC-FB-04 Thất bại: ${error}`);
+  } finally {
+    resetEnvConfigs();
+  }
+
+  // TC-FB-05: Firebase verifyIdToken thành công tạo đúng AppUser
+  try {
+    const app = await getCleanApp();
+    moduleRegistry.updateModuleState("tasks-query", "enabled");
+    
+    setMockTokenVerifier(async (token) => {
+      if (token === "real-valid-token-123") {
+        return {
+          uid: "real-user-abc",
+          email: "editor@qlcv.local",
+          email_verified: true,
+          role: "editor",
+          name: "Real Editor User"
+        };
+      }
+      throw new Error("Token signature verification failed");
+    });
+
+    const res = await request(app)
+      .get("/api/modules/tasks-query/tasks")
+      .set("Authorization", "Bearer real-valid-token-123");
+    
+    assert(
+      res.status === 200 && res.body?.success === true,
+      "TC-FB-05: verifyIdToken thành công trả về dữ liệu đúng quyền người dùng."
+    );
+  } catch (error) {
+    assert(false, `TC-FB-05 Thất bại: ${error}`);
+  } finally {
+    resetEnvConfigs();
+  }
+
+  // TC-FB-06: Firebase verifyIdToken lỗi trả 401
+  try {
+    const app = await getCleanApp();
+    setMockTokenVerifier(async () => {
+      throw new Error("Expired ID Token");
+    });
+
+    const res = await request(app)
+      .get("/api/modules/tasks-query/tasks")
+      .set("Authorization", "Bearer bad-expired-token");
+
+    assert(
+      res.status === 401 && res.body?.error?.code === "AUTH_REQUIRED",
+      "TC-FB-06: verifyIdToken ném lỗi trả về đúng HTTP 401 (AUTH_REQUIRED)."
+    );
+  } catch (error) {
+    assert(false, `TC-FB-06 Thất bại: ${error}`);
+  } finally {
+    resetEnvConfigs();
+  }
+
+  // TC-FB-07: Role claim không hợp lệ không được tự động nâng quyền
+  try {
+    const app = await getCleanApp();
+    moduleRegistry.updateModuleState("tasks-query", "enabled");
+    
+    setMockTokenVerifier(async () => {
+      return {
+        uid: "user-with-bad-claim",
+        email: "malicious@qlcv.local",
+        email_verified: true,
+        role: "super-god-admin", // Role bất hợp pháp
+        name: "Malicious User"
+      };
+    });
+
+    const res = await request(app)
+      .get("/api/modules/tasks-query/tasks")
+      .set("Authorization", "Bearer bad-claim-token");
+
+    // Phải chuyển về viewer, và viewer không có quyền đọc tasks nên bị trả 403
+    assert(
+      res.status === 403 && res.body?.error?.code === "PERMISSION_DENIED",
+      "TC-FB-07: Role claim không hợp lệ không được nâng quyền và rơi về 'viewer' bị từ chối."
+    );
+  } catch (error) {
+    assert(false, `TC-FB-07 Thất bại: ${error}`);
+  } finally {
+    resetEnvConfigs();
+  }
+
+  // TC-FB-08: Email domain không được phép bị từ chối
+  try {
+    const app = await getCleanApp();
+    serverConfig.allowedEmailDomains = ["pqg.gov.vn"];
+    moduleRegistry.updateModuleState("tasks-query", "enabled");
+
+    setMockTokenVerifier(async () => {
+      return {
+        uid: "user-with-invalid-domain",
+        email: "hacker@gmail.com", // Gmail không nằm trong allow list
+        email_verified: true,
+        role: "editor",
+        name: "Invalid Domain User"
+      };
+    });
+
+    const res = await request(app)
+      .get("/api/modules/tasks-query/tasks")
+      .set("Authorization", "Bearer disallowed-domain-token");
+
+    assert(
+      res.status === 403 && res.body?.error?.code === "PERMISSION_DENIED",
+      "TC-FB-08: Địa chỉ email ngoài domain được phép bị chặn đứng thành công (HTTP 403)."
+    );
+  } catch (error) {
+    assert(false, `TC-FB-08 Thất bại: ${error}`);
+  } finally {
+    resetEnvConfigs();
+  }
+
+
+  // --- REQUEST ID SECURITY VALIDATION ---
+
+  console.log("\n[KIỂM THỰ AN TOÀN REQUEST ID]");
+
+  try {
+    const { requestInitializer } = await import("../server/auth/authenticateRequest");
+    const maliciousId = "clean-start\n\rDangerousInject" + "b".repeat(120);
+    
+    const req: any = {
+      header: (name: string) => {
+        if (name === "x-request-id") return maliciousId;
+        return undefined;
+      }
+    };
+    
+    let setHeaderValue = "";
+    const res: any = {
+      setHeader: (name: string, value: string) => {
+        if (name === "x-request-id") {
+          setHeaderValue = value;
+        }
+      }
+    };
+    
+    let nextCalled = false;
+    const next = () => { nextCalled = true; };
+    
+    requestInitializer(req, res, next);
+
+    assert(
+      setHeaderValue !== maliciousId &&
+      !setHeaderValue.includes("\n") &&
+      !setHeaderValue.includes("\r") &&
+      setHeaderValue.length <= 100 &&
+      nextCalled,
+      "TC-REQ-ID-SEC: Làm sạch x-request-id thành công, ngăn chặn tiêm nhiễm dòng và tràn độ dài."
+    );
+  } catch (error) {
+    assert(false, `TC-REQ-ID-SEC Thất bại: ${error}`);
+  }
+
 
   console.log("\n=================================================");
   if (failed) {

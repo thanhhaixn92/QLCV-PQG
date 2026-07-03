@@ -1,6 +1,7 @@
 import { Router, Response, NextFunction } from "express";
 import { healthRoute } from "../routes/healthRoute";
 import { aiHealthRoute } from "../routes/aiHealthRoute";
+import { firebaseHealthRoute } from "../routes/firebaseHealthRoute";
 import { runtimeConfigRoute } from "../runtime/runtimeConfigRoute";
 import { authenticateRequest } from "../auth/authenticateRequest";
 import { checkPermission } from "../auth/authorization";
@@ -15,6 +16,7 @@ export function registerCoreRoutes(router: Router) {
   // Public access routes
   router.get("/health", healthRoute);
   router.get("/ai/health", aiHealthRoute);
+  router.get("/firebase/health", firebaseHealthRoute);
   router.get("/runtime-config", runtimeConfigRoute);
 
   // Protected administration routes

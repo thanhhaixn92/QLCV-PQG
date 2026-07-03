@@ -7,7 +7,11 @@ export interface ServerConfig {
   firebaseProjectId: string | undefined;
   firebaseDatabaseId: string | undefined;
   firebaseStorageBucket: string | undefined;
+  firebaseServiceAccountJson: string | undefined;
+  firebaseServiceAccountBase64: string | undefined;
+  googleApplicationCredentials: string | undefined;
   allowedEmailDomains: string[];
+  allowMockAuth: boolean;
 }
 
 const parseAllowedDomains = (val: string | undefined): string[] => {
@@ -21,7 +25,11 @@ export const serverConfig: ServerConfig = {
   firebaseProjectId: process.env.FIREBASE_PROJECT_ID,
   firebaseDatabaseId: process.env.FIREBASE_DATABASE_ID,
   firebaseStorageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  firebaseServiceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+  firebaseServiceAccountBase64: process.env.FIREBASE_SERVICE_ACCOUNT_BASE64,
+  googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
   allowedEmailDomains: parseAllowedDomains(process.env.ALLOWED_EMAIL_DOMAINS),
+  allowMockAuth: process.env.ALLOW_MOCK_AUTH === "true",
 };
 
 export function validateConfig() {
