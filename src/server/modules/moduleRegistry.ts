@@ -2,6 +2,7 @@ import { RegisteredModule } from "./moduleTypes";
 import { appModuleManifestSchema } from "../../shared/schemas/moduleManifestSchema";
 import { ModuleState } from "../../shared/contracts/moduleContracts";
 import { logger } from "../infrastructure/logging/logger";
+import { Router } from "express";
 
 class ModuleRegistryClass {
   private modules = new Map<string, RegisteredModule>();
@@ -11,7 +12,7 @@ class ModuleRegistryClass {
     logger.info("ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái).");
   }
 
-  registerModule(manifestInput: unknown, defaultState: ModuleState = "disabled"): { success: boolean; error?: string } {
+  registerModule(manifestInput: unknown, defaultState: ModuleState = "disabled", registerRoutes?: (router: Router) => void): { success: boolean; error?: string } {
     try {
       const parseResult = appModuleManifestSchema.safeParse(manifestInput);
       if (!parseResult.success) {
@@ -30,7 +31,8 @@ class ModuleRegistryClass {
 
       this.modules.set(manifest.id, {
         manifest,
-        state: defaultState
+        state: defaultState,
+        registerRoutes
       });
 
       logger.info(`ModuleRegistry: Đăng ký thành công mô-đun '${manifest.id}' ở trạng thái '${defaultState}'`);

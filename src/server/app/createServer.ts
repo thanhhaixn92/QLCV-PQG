@@ -2,6 +2,7 @@ import express, { Router, Response, NextFunction } from "express";
 import { validateConfig } from "./serverConfig";
 import { registerCoreRoutes } from "./registerCoreRoutes";
 import { registerAllModules } from "../modules/registerModules";
+import { moduleRegistry } from "../modules/moduleRegistry";
 import { AppError } from "../../shared/errors/appError";
 import { logger } from "../infrastructure/logging/logger";
 import { requestInitializer } from "../auth/authenticateRequest";
@@ -19,6 +20,15 @@ export async function createServer() {
 
   const apiRouter = Router();
   registerCoreRoutes(apiRouter);
+
+  // Register module-specific routes dynamically
+  const registeredModules = moduleRegistry.getAllModules();
+  for (const mod of registeredModules) {
+    if (mod.registerRoutes) {
+      mod.registerRoutes(apiRouter);
+    }
+  }
+
   app.use("/api", apiRouter);
 
   app.use((err: any, req: AppRequest, res: Response, next: NextFunction) => {

@@ -2,7 +2,7 @@ import { Router, Response, NextFunction } from "express";
 import { healthRoute } from "../routes/healthRoute";
 import { aiHealthRoute } from "../routes/aiHealthRoute";
 import { runtimeConfigRoute } from "../runtime/runtimeConfigRoute";
-import { authenticateRequest, requestInitializer } from "../auth/authenticateRequest";
+import { authenticateRequest } from "../auth/authenticateRequest";
 import { checkPermission } from "../auth/authorization";
 import { moduleRegistry } from "../modules/moduleRegistry";
 import { moduleStateService } from "../modules/moduleStateService";
@@ -12,9 +12,6 @@ import { AppError } from "../../shared/errors/appError";
 import { z } from "zod";
 
 export function registerCoreRoutes(router: Router) {
-  // Initialize request variables (requestId)
-  router.use(requestInitializer);
-
   // Public access routes
   router.get("/health", healthRoute);
   router.get("/ai/health", aiHealthRoute);
@@ -64,31 +61,6 @@ export function registerCoreRoutes(router: Router) {
           success: true,
           moduleId: id,
           state,
-          requestId: req.requestId
-        });
-      } catch (error) {
-        next(error);
-      }
-    }
-  );
-
-  // tasks-query API boundary mock
-  router.get(
-    "/modules/tasks-query/tasks",
-    authenticateRequest,
-    checkPermission("tasks.read"),
-    async (req: AppRequest, res: Response, next: NextFunction) => {
-      try {
-        // Enforce that module must be enabled at backend level
-        moduleStateService.assertModuleEnabled("tasks-query", req.requestId);
-
-        res.json({
-          success: true,
-          tasks: [
-            { id: "CV-001", title: "Xây dựng khung ứng dụng QLCV_PQG Next v3.0", status: "completed", assignee: "Principal Architect" },
-            { id: "CV-002", title: "Thiết lập module-state-registry điều khiển luồng", status: "completed", assignee: "Senior Dev" },
-            { id: "CV-003", title: "Tích hợp và kiểm toán API Edge với Zod", status: "pending", assignee: "Security Lead" }
-          ],
           requestId: req.requestId
         });
       } catch (error) {

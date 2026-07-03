@@ -1,6 +1,8 @@
 import { moduleRegistry } from "./moduleRegistry";
 import { AppError } from "../../shared/errors/appError";
 import { ModuleState } from "../../shared/contracts/moduleContracts";
+import { Response, NextFunction } from "express";
+import { AppRequest } from "../auth/authTypes";
 
 export const moduleStateService = {
   getModuleState(moduleId: string): ModuleState {
@@ -26,3 +28,15 @@ export const moduleStateService = {
     }
   }
 };
+
+export function requireModuleEnabled(moduleId: string) {
+  return (req: AppRequest, res: Response, next: NextFunction) => {
+    try {
+      moduleStateService.assertModuleEnabled(moduleId, req.requestId);
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
