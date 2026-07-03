@@ -7,8 +7,8 @@ Hệ thống quản lý công việc, biên tập nội dung, quản lý tài li
 ## 🚀 Trạng Thái Dự Án (Implemented, Mocked, Planned)
 
 - **CI Pipeline & Automated Controls**: Đã thiết lập GitHub Actions tích hợp chạy tự động `lint` (TypeScript check), `test` (các kịch bản đơn vị và tích hợp HTTP), và `build` dự án trên mỗi luồng đẩy mã nguồn.
-- **Module Registry & State Controller (Implemented/Mocked)**: Quản lý bật/tắt trạng thái các phân hệ nghiệp vụ tập trung tại máy chủ. Khi tắt mô-đun, các API liên quan bị chặn ngay tại biên với mã lỗi `MODULE_DISABLED`, giao diện ẩn đi và không để lộ endpoint.
-  - *Lưu ý*: Trạng thái mô-đun hiện tại được lưu **in-memory** trong bộ nhớ tiến trình Node.js cho mục đích thử nghiệm (sẽ reset về mặc định sau khi khởi động lại máy chủ). Cơ chế lưu bền vững (Persistent Production) chưa được triển khai.
+- **Module Registry & State Controller (Implemented)**: Quản lý bật/tắt trạng thái các phân hệ nghiệp vụ tập trung tại máy chủ. Khi tắt mô-đun, các API liên quan bị chặn ngay tại biên với mã lỗi `MODULE_DISABLED`, giao diện ẩn đi và không để lộ endpoint.
+  - **Lưu trữ Bền vững (G3 Persistence)**: Đã tích hợp lưu trữ trạng thái mô-đun bền vững xuống Firestore (collection `system_module_states`) hoặc tự động rơi về InMemory fallback thông minh. Hỗ trợ cơ chế Optimistic Concurrency Control (OCC) thông qua `expectedVersion` để ngăn chặn xung đột dữ liệu ghi đè.
 - **Truy vấn Công việc (tasks-query) (Mocked for Isolation)**: Phân hệ `tasks-query` hiện tại đã được bóc tách hoàn toàn ra khỏi Core Router và được cô lập thành mô-đun nghiệp vụ riêng biệt tại `/src/server/modules/tasks-query/` cho mục đích kiểm định hành vi biên (module-isolation testing). Các API trả về dữ liệu mock mô phỏng và chưa kích hoạt database thật.
 - **Role-Based Access Control (RBAC) (Implemented)**: Hỗ trợ phân quyền người dùng thông minh, bảo mật phân tầng nghiệp vụ theo vai trò.
 - **Correlation ID Tracking (Implemented)**: Tự động đồng bộ hóa mã yêu cầu `requestId` xuyên suốt luồng giao dịch thông qua Middleware thiết lập duy nhất tại biên, lưu nhật ký kiểm toán để dễ dàng theo dấu lỗi.

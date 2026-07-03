@@ -3,6 +3,7 @@ import { validateConfig } from "./serverConfig";
 import { registerCoreRoutes } from "./registerCoreRoutes";
 import { registerAllModules } from "../modules/registerModules";
 import { moduleRegistry } from "../modules/moduleRegistry";
+import { moduleStateService } from "../modules/moduleStateService";
 import { AppError } from "../../shared/errors/appError";
 import { logger } from "../infrastructure/logging/logger";
 import { requestInitializer } from "../auth/authenticateRequest";
@@ -11,6 +12,7 @@ import { AppRequest } from "../auth/authTypes";
 export async function createServer() {
   validateConfig();
   registerAllModules();
+  await moduleStateService.hydrateFromRepository();
 
   const app = express();
   

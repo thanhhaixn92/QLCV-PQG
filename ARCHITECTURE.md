@@ -33,3 +33,24 @@ Mỗi công cụ (Tool) đăng ký vào `ToolRegistry` của AI bắt buộc kha
 Khi thực thi công cụ, hệ thống kiểm tra kép:
 1. Mô-đun sở hữu công cụ có đang ở trạng thái `enabled` không.
 2. Vai trò tài khoản của người dùng có sở hữu đầy đủ quyền hạn không.
+
+## 4. Cơ chế Lưu trữ Trạng thái Mô-đun (Module State Persistence - G3)
+
+Để duy trì trạng thái vận hành của các mô-đun qua các lần khởi động lại máy chủ (process restarts), G3 giới thiệu lớp lưu trữ bền vững độc lập:
+
+### 4.1. Khối mẫu thiết kế kho lưu trữ (Repository Pattern)
+Hệ thống trừu tượng hóa phương thức lưu trữ thông qua `ModuleStateRepository`:
+- **Firestore Module State Repository**: Lưu trữ dữ liệu thực tế trên Cloud Firestore thuộc collection `system_module_states`.
+- **In-Memory Module State Repository**: Sử dụng cho môi trường kiểm thử CI/CD và môi trường phát triển cục bộ khi chưa cấu hình Firebase Credentials, giúp bảo đảm khả năng cô lập tốt (test isolation).
+
+### 4.2. Luồng Hydration lúc khởi chạy (Startup Hydration Flow)
+1. Máy chủ khởi động, gọi `registerAllModules()` để đăng ký các mô-đun mặc định từ tệp kê khai (Manifests).
+2. Gọi `moduleStateService.hydrateFromRepository()` để nạp trạng thái từ Repository.
+3. Nếu Repository có bản ghi trạng thái của mô-đun hợp lệ, hệ thống sẽ cập nhật bộ lưu trữ Runtime trong memory (`ModuleRegistry`).
+4. Nếu chưa có hoặc xảy ra lỗi (ví dụ Firestore mất kết nối), hệ thống giữ nguyên trạng thái mặc định từ Manifest để bảo đảm tính tự phục hồi (fail-safe).
+
+### 4.3. Kiểm soát Đồng thời Lạc quan (Optimistic Concurrency Control - OCC)
+Mỗi document lưu trên Firestore chứa một thuộc tính `version` tăng tự động. Khi cập nhật trạng thái mô-đun (`PUT /api/admin/modules/:id/state`), quản trị viên có thể truyền lên `expectedVersion`. Hệ thống sử dụng Giao dịch Firestore (Transactions) để kiểm tra:
+- Nếu phiên bản hiện tại trên Database khác với `expectedVersion`, giao dịch sẽ hủy bỏ và trả về lỗi `CONFLICT` (HTTP 409).
+- Giúp ngăn chặn tuyệt đối tình trạng tranh chấp dữ liệu (race conditions) khi có nhiều quản trị viên cùng thao tác cấu hình hệ thống.
+
