@@ -27,6 +27,7 @@ async function runAllTests() {
   // Thiết lập mặc định cho môi trường chạy test sử dụng Mock Auth
   serverConfig.allowMockAuth = true;
   serverConfig.nodeEnv = "development";
+  delete process.env.TASKS_COLLECTION;
 
   // Khởi tạo bộ lưu trữ trạng thái in-memory sạch cho các ca kiểm thử ban đầu
   const { setModuleStateRepository } = await import("../server/modules/state/moduleStateRepository");
