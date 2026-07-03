@@ -83,8 +83,15 @@ async function main() {
     console.log(`Collection: ${tasksCollection.trim()}`);
     console.log(`Document ID: ${docRef.id}`);
     console.log(`Database: ${dbId}`);
-  } catch (error: any) {
-    console.error("Lỗi khi tạo seed task:", error?.message || String(error));
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown Firestore seed error";
+    console.error("Không thể tạo dữ liệu mẫu Firestore.");
+    if (process.env.NODE_ENV !== "production") {
+      console.error(message);
+    }
     process.exit(1);
   }
 }
