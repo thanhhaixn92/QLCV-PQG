@@ -2368,6 +2368,14 @@ async function runAllTests() {
     }
   }
 
+  // --- MILESTONE G6.0 TESTS ---
+  try {
+    const { runTaskCommandTests } = await import("./tasks-command/taskCommandHttp.test");
+    await runTaskCommandTests(getCleanApp);
+  } catch (error) {
+    console.error("❌ G6.0 Tests Thất bại:", error);
+    failed = true;
+  }
 
   console.log("\n=================================================");
   if (failed) {
