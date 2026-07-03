@@ -4,6 +4,7 @@ import { serverConfig } from "../app/serverConfig";
 import { AppError } from "../../shared/errors/appError";
 import { resolveUserRole } from "./userRoleResolver";
 import { verifyIdToken } from "../infrastructure/firebase/firebaseAdmin";
+import { UserRole } from "../../shared/permissions/permissions";
 import crypto from "crypto";
 
 export const requestInitializer = (req: AppRequest, res: Response, next: NextFunction) => {
@@ -62,7 +63,7 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
         uid: customUid || `mock-uid-${role}`,
         email: `${role}@qlcv.local`,
         emailVerified: true,
-        role: role as any,
+        role: role as UserRole,
         displayName: `Mock ${role.charAt(0).toUpperCase() + role.slice(1)}`,
         isMock: true,
       };
@@ -86,12 +87,13 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
       };
       
       next();
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof AppError && err.code === "PERMISSION_DENIED") {
         throw err;
       }
       // Ghi log chi tiết lỗi kỹ thuật phía server kèm requestId, tuyệt đối không log raw token
-      console.warn(`[AuthError] RequestId: ${req.requestId}. Chi tiết lỗi xác thực:`, err?.message || err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.warn(`[AuthError] RequestId: ${req.requestId}. Chi tiết lỗi xác thực:`, errorMessage);
 
       // Trả về thông báo chung, an toàn cho client
       throw new AppError("AUTH_REQUIRED", "Token không hợp lệ hoặc đã hết hạn.", req.requestId);

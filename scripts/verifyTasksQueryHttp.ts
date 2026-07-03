@@ -5,11 +5,39 @@ dotenv.config();
 process.env.ALLOW_MOCK_AUTH = "true";
 
 import { createServer } from "../src/server/app/createServer";
-import request from "supertest";
+import request, { Response } from "supertest";
 import { serverConfig } from "../src/server/app/serverConfig";
 import { getFirebaseStatus } from "../src/server/infrastructure/firebase/firebaseAdmin";
 
 serverConfig.allowMockAuth = true;
+
+interface TaskHttpItem {
+  id: string;
+  title: string;
+  status: string;
+  priority: string | null;
+  createdAt: string;
+  updatedAt: string;
+  dueAt: string | null;
+  creator?: {
+    uid?: string;
+    displayName?: string;
+  } | null;
+  assignee?: {
+    uid?: string;
+    displayName?: string;
+  } | null;
+  seedKey?: string;
+}
+
+interface TasksResponse {
+  success: boolean;
+  requestId: string;
+  data: {
+    source: string;
+    items: TaskHttpItem[];
+  };
+}
 
 async function main() {
   const firebaseDatabaseId = process.env.FIREBASE_DATABASE_ID;
@@ -39,19 +67,21 @@ async function main() {
     console.log(`Database: ${dbId}`);
     console.log(`Collection: ${tasksCollection.trim()}`);
     console.log(`Timestamp mode: ${tsMode}`);
+    console.log("Chú ý: Live HTTP verification sử dụng mock authentication và Firestore thật.");
 
     // 1. HTTP Verification với vai trò ADMIN
     console.log("1. Gửi request HTTP với vai trò ADMIN...");
-    const adminRes = await request(app)
+    const adminRes: Response = await request(app)
       .get("/api/modules/tasks-query/tasks")
       .set("Authorization", "Bearer mock-admin")
       .expect(200);
 
-    const data = adminRes.body.data;
+    const adminBody = adminRes.body as TasksResponse;
+    const data = adminBody.data;
     const items = data.items;
-    const requestId = adminRes.body.requestId;
+    const requestId = adminBody.requestId;
 
-    if (adminRes.body.success !== true) {
+    if (adminBody.success !== true) {
       console.error("Lỗi: HTTP response trả về success = false.");
       process.exit(1);
     }
@@ -67,7 +97,7 @@ async function main() {
     }
 
     // Tìm kiếm seed task (task có seedKey ẩn đi nhưng tiêu đề là "Công việc thử nghiệm")
-    const seedTask = items.find((t: any) => t.title === "Công việc thử nghiệm");
+    const seedTask = items.find((t: TaskHttpItem) => t.title === "Công việc thử nghiệm");
     if (!seedTask) {
       console.error("Lỗi: Không tìm thấy document seed trong response HTTP của Admin.");
       process.exit(1);
@@ -102,82 +132,87 @@ async function main() {
     }
     console.log("   [OK] Xác nhận toàn bộ timestamp đã được chuẩn hóa thành chuỗi ISO UTC.");
 
-    // Helper để xử lý an toàn lỗi composite index (DEPENDENCY_UNAVAILABLE)
-    const checkResponseOrIndexError = (res: any, expectedStatus: number, stepName: string): boolean => {
-      if (res.status === expectedStatus) {
-        return true;
-      }
-      if (res.status === 503 && res.body.error?.code === "DEPENDENCY_UNAVAILABLE") {
-        console.log(`   [OK] ${stepName}: Firestore báo thiếu composite index. Xác nhận lỗi đã được che giấu an toàn khỏi Client, không rò rỉ URL nhạy cảm.`);
-        return false;
-      }
-      console.error(`Lỗi tại ${stepName}: Kỳ vọng status ${expectedStatus} hoặc 503 DEPENDENCY_UNAVAILABLE. Thực tế nhận: ${res.status}`, res.body);
-      process.exit(1);
-    };
-
     // 2. HTTP Verification với vai trò MANAGER hợp lệ (phòng ban dept-test)
     console.log("2. Gửi request HTTP với vai trò MANAGER (phòng ban được phép 'dept-test')...");
-    const managerAuthRes = await request(app)
+    const managerAuthRes: Response = await request(app)
       .get("/api/modules/tasks-query/tasks?departmentId=dept-test")
       .set("Authorization", "Bearer mock-manager")
       .set("x-user-permissions", "tasks.department,tasks.read")
-      .set("x-user-departments", "dept-test");
+      .set("x-user-departments", "dept-test")
+      .expect(200);
 
-    if (checkResponseOrIndexError(managerAuthRes, 200, "MANAGER hợp lệ")) {
-      const managerItems = managerAuthRes.body.data.items;
-      const hasSeedTaskAsManager = managerItems.some((t: any) => t.title === "Công việc thử nghiệm");
-      if (!hasSeedTaskAsManager) {
-        console.error("Lỗi: Manager hợp lệ không thể thấy seed document.");
-        process.exit(1);
-      }
-      console.log("   [OK] Manager phòng ban 'dept-test' truy cập seed document thành công.");
+    const managerBody = managerAuthRes.body as TasksResponse;
+    const managerItems = managerBody.data.items;
+    const hasSeedTaskAsManager = managerItems.some((t: TaskHttpItem) => t.title === "Công việc thử nghiệm");
+    if (!hasSeedTaskAsManager) {
+      console.error("Lỗi: Manager hợp lệ không thể thấy seed document.");
+      process.exit(1);
     }
+    console.log("   [OK] Manager phòng ban 'dept-test' truy cập seed document thành công (HTTP 200).");
 
     // 3. HTTP Verification với vai trò MANAGER trái phép (phòng ban khác)
     console.log("3. Gửi request HTTP với vai trò MANAGER (truy vấn phòng ban không được phép)...");
-    const managerBlockedRes = await request(app)
+    const managerBlockedRes: Response = await request(app)
       .get("/api/modules/tasks-query/tasks?departmentId=dept-other")
       .set("Authorization", "Bearer mock-manager")
       .set("x-user-permissions", "tasks.department,tasks.read")
-      .set("x-user-departments", "dept-test");
+      .set("x-user-departments", "dept-test")
+      .expect(403);
 
-    if (checkResponseOrIndexError(managerBlockedRes, 403, "MANAGER trái phép")) {
-      if (managerBlockedRes.body.error?.code !== "PERMISSION_DENIED") {
-        console.error(`Lỗi: Manager trái phép phải bị chặn bằng PERMISSION_DENIED. Nhận được: ${managerBlockedRes.body.error?.code}`);
-        process.exit(1);
-      }
-      console.log("   [OK] Chặn truy cập phòng ban trái phép của Manager thành công.");
+    if (managerBlockedRes.body.error?.code !== "PERMISSION_DENIED") {
+      console.error(`Lỗi: Manager trái phép phải bị chặn bằng PERMISSION_DENIED. Nhận được: ${managerBlockedRes.body.error?.code}`);
+      process.exit(1);
     }
+    console.log("   [OK] Chặn truy cập phòng ban trái phép của Manager thành công (HTTP 403).");
 
     // 4. HTTP Verification với vai trò OPERATOR đúng chủ sở hữu (admin-uid-h1)
     console.log("4. Gửi request HTTP với vai trò OPERATOR sở hữu (UID: admin-uid-h1)...");
-    const operatorAuthRes = await request(app)
+    const operatorAuthRes: Response = await request(app)
       .get("/api/modules/tasks-query/tasks")
-      .set("Authorization", "Bearer mock-operator:admin-uid-h1");
+      .set("Authorization", "Bearer mock-operator:admin-uid-h1")
+      .expect(200);
 
-    if (checkResponseOrIndexError(operatorAuthRes, 200, "OPERATOR sở hữu")) {
-      const operatorItems = operatorAuthRes.body.data.items;
-      const hasSeedTaskAsOperator = operatorItems.some((t: any) => t.title === "Công việc thử nghiệm");
-      if (!hasSeedTaskAsOperator) {
-        console.error("Lỗi: Operator chủ sở hữu không thể thấy seed document.");
-        process.exit(1);
-      }
-      console.log("   [OK] Operator sở hữu truy cập seed document thành công.");
+    const operatorBody = operatorAuthRes.body as TasksResponse;
+    const operatorItems = operatorBody.data.items;
+    const hasSeedTaskAsOperator = operatorItems.some((t: TaskHttpItem) => t.title === "Công việc thử nghiệm");
+    if (!hasSeedTaskAsOperator) {
+      console.error("Lỗi: Operator chủ sở hữu không thể thấy seed document.");
+      process.exit(1);
     }
+    console.log("   [OK] Operator sở hữu truy cập seed document thành công (HTTP 200).");
 
     // 5. HTTP Verification với vai trò OPERATOR khác (UID không phải chủ sở hữu)
     console.log("5. Gửi request HTTP với vai trò OPERATOR khác (UID: user-999) truy vấn trực tiếp...");
-    const operatorBlockedRes = await request(app)
+    const operatorBlockedRes: Response = await request(app)
       .get("/api/modules/tasks-query/tasks?assigneeUid=admin-uid-h1")
-      .set("Authorization", "Bearer mock-operator:user-999");
+      .set("Authorization", "Bearer mock-operator:user-999")
+      .expect(403);
 
-    if (checkResponseOrIndexError(operatorBlockedRes, 403, "OPERATOR trái phép")) {
-      if (operatorBlockedRes.body.error?.code !== "PERMISSION_DENIED") {
-        console.error(`Lỗi: Operator xem trực tiếp UID người khác phải bị chặn bằng PERMISSION_DENIED. Nhận được: ${operatorBlockedRes.body.error?.code}`);
-        process.exit(1);
-      }
-      console.log("   [OK] Chặn truy vấn trực tiếp UID người khác của Operator thành công.");
+    if (operatorBlockedRes.body.error?.code !== "PERMISSION_DENIED") {
+      console.error(`Lỗi: Operator xem trực tiếp UID người khác phải bị chặn bằng PERMISSION_DENIED. Nhận được: ${operatorBlockedRes.body.error?.code}`);
+      process.exit(1);
     }
+    console.log("   [OK] Chặn truy vấn trực tiếp UID người khác của Operator thành công (HTTP 403).");
+
+    // 6. Xác minh xử lý lỗi thiếu composite index (DEPENDENCY_UNAVAILABLE) một cách độc lập
+    console.log("6. Gửi request HTTP cố tình thiếu composite index (status=todo&priority=high)...");
+    const indexErrorRes: Response = await request(app)
+      .get("/api/modules/tasks-query/tasks?status=todo&priority=high")
+      .set("Authorization", "Bearer mock-admin")
+      .expect(503);
+
+    if (indexErrorRes.body.error?.code !== "DEPENDENCY_UNAVAILABLE") {
+      console.error(`Lỗi: Kỳ vọng mã lỗi DEPENDENCY_UNAVAILABLE, nhận được: ${indexErrorRes.body.error?.code}`);
+      process.exit(1);
+    }
+
+    // Đảm bảo không rò rỉ URL nhạy cảm của Firebase Console
+    const errorBodyString = JSON.stringify(indexErrorRes.body);
+    if (errorBodyString.includes("https://console.firebase.google.com")) {
+      console.error("Lỗi bảo mật: URL Firebase Console nhạy cảm bị rò rỉ qua response API!");
+      process.exit(1);
+    }
+    console.log("   [OK] Xác nhận lỗi chỉ mục được ánh xạ thành 503 DEPENDENCY_UNAVAILABLE và che giấu hoàn toàn URL nhạy cảm.");
 
     console.log("\n🎉 LIVE HTTP INTEGRATION VERIFICATION PASSED SUCCESSFULLY!");
     process.exit(0);
