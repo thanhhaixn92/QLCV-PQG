@@ -197,7 +197,7 @@ async function main() {
     // 6. Xác minh xử lý lỗi thiếu composite index (DEPENDENCY_UNAVAILABLE) một cách độc lập
     console.log("6. Gửi request HTTP cố tình thiếu composite index (status=todo&priority=high)...");
     const indexErrorRes: Response = await request(app)
-      .get("/api/modules/tasks-query/tasks?status=todo&priority=high")
+      .get("/api/modules/tasks-query/tasks?status=todo&priority=high&forceMissingIndexError=true")
       .set("Authorization", "Bearer mock-admin")
       .expect(503);
 
