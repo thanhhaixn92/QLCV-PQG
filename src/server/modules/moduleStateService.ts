@@ -37,9 +37,11 @@ export const moduleStateService = {
 
   getPersistenceStatus(): ModuleStatePersistenceStatus {
     const mode = getRepositoryPersistenceMode();
-    let status: "ready" | "degraded" | "unavailable" = persistenceStatus;
+    let status: "ready" | "degraded" | "unavailable" = "ready";
     if (mode === "unavailable") {
       status = "unavailable";
+    } else if (!hydrated || persistenceStatus === "degraded") {
+      status = "degraded";
     }
     return {
       status,
@@ -55,7 +57,7 @@ export const moduleStateService = {
     persistenceStatus = "ready";
   },
 
-  async hydrateFromRepository(): Promise<{ success: boolean; mode: string; count: number; error?: string }> {
+  async hydrateFromRepository(): Promise<{ success: boolean; mode: string; count: number; invalidRecordCount?: number; error?: string }> {
     const mode = getRepositoryPersistenceMode();
     try {
       const repo = getModuleStateRepository();
@@ -72,15 +74,24 @@ export const moduleStateService = {
         }
       }
 
+      const invalidCount = (records as any).invalidCount || 0;
+      if (invalidCount > 0) {
+        hydrated = true;
+        lastHydratedAt = new Date();
+        persistenceStatus = "degraded";
+        return { success: true, mode, count, invalidRecordCount: invalidCount };
+      }
+
       hydrated = true;
       lastHydratedAt = new Date();
       persistenceStatus = "ready";
       return { success: true, mode, count };
     } catch (error: any) {
       logger.error(`ModuleStateService: Hydration thất bại: ${error.message}`);
+      hydrated = false;
       persistenceStatus = "degraded";
-      // Startup hydration is non-crashing
-      return { success: false, mode, count: 0, error: error.message };
+      // Startup hydration is non-crashing, safe error returned
+      return { success: false, mode, count: 0, error: "Không thể kết nối cơ sở dữ liệu để đồng bộ trạng thái." };
     }
   },
 
@@ -107,19 +118,30 @@ export const moduleStateService = {
     }
 
     const repo = getModuleStateRepository();
-    // 1. Write persistence first (inside transactions if supported by adapter)
-    const record = await repo.set({
-      moduleId: input.moduleId,
-      state: input.state,
-      updatedBy: input.updatedBy,
-      reason: input.reason,
-      expectedVersion: input.expectedVersion,
-    });
+    try {
+      // 1. Write persistence first (inside transactions if supported by adapter)
+      const record = await repo.set({
+        moduleId: input.moduleId,
+        state: input.state,
+        updatedBy: input.updatedBy,
+        reason: input.reason,
+        expectedVersion: input.expectedVersion,
+      });
 
-    // 2. Update runtime memory state only after successful write
-    moduleRegistry.updateModuleState(input.moduleId, record.state);
+      // 2. Update runtime memory state only after successful write
+      moduleRegistry.updateModuleState(input.moduleId, record.state);
 
-    return record;
+      return record;
+    } catch (error: any) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      logger.error(`ModuleStateService: Giao dịch cập nhật trạng thái lỗi: ${error.message}`);
+      throw new AppError(
+        "DEPENDENCY_UNAVAILABLE",
+        "Không thể lưu trạng thái mô-đun tại thời điểm này."
+      );
+    }
   }
 };
 

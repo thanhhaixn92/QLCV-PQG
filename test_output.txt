@@ -1,0 +1,470 @@
+
+> qlcv-pqg-next@0.1.0 test
+> tsx src/tests/runTests.ts
+
+◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+=================================================
+   BẮT ĐẦU CHẠY CÁC CA KIỂM THỬ TỰ ĐỘNG - QLCV   
+=================================================
+{"level":"info","timestamp":"2026-07-03T07:07:01.412Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'in-memory'"}
+
+[KIỂM THỬ ĐƠN VỊ LÕI]
+
+- Xác thực Schema Module Manifest (Zod):
+   [PASSED] Xác thực manifest hợp lệ thành công.
+   [PASSED] Ngăn chặn cấu hình ID trống thành công.
+
+- Thao tác trên Module Registry:
+{"level":"info","timestamp":"2026-07-03T07:07:01.416Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.416Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.417Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] Module 'tasks-query' đã được đăng ký và tìm thấy.
+   [PASSED] Mặc định 'tasks-query' đăng ký ở trạng thái 'disabled'.
+{"level":"error","timestamp":"2026-07-03T07:07:01.417Z","message":"ModuleRegistry: Phát hiện ID mô-đun trùng lặp: tasks-query","error":"undefined"}
+   [PASSED] Ngăn chặn đăng ký trùng lặp ID thành công.
+
+- Kiểm soát công cụ tại Tool Registry:
+{"level":"info","timestamp":"2026-07-03T07:07:01.417Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.417Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.417Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.417Z","message":"ToolRegistry: Đăng ký thành công tool 'queryTasksTool' của mô-đun 'tasks-query'"}
+   [PASSED] Không truy xuất được công cụ của mô-đun khi mô-đun bị tắt.
+{"level":"info","timestamp":"2026-07-03T07:07:01.417Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+   [PASSED] Cho phép gọi công cụ của mô-đun khi mô-đun được bật.
+   [PASSED] Ngăn chặn gọi công cụ khi người dùng thiếu quyền hạn.
+
+- Kiểm tra Ánh xạ HTTP Status Code của AppError:
+   [PASSED] AUTH_REQUIRED tương ứng HTTP 401.
+   [PASSED] PERMISSION_DENIED tương ứng HTTP 403.
+   [PASSED] VALIDATION_FAILED tương ứng HTTP 400.
+   [PASSED] DATA_CONFLICT tương ứng HTTP 409.
+   [PASSED] MODULE_UNAVAILABLE tương ứng HTTP 503.
+   [PASSED] DEPENDENCY_UNAVAILABLE tương ứng HTTP 503.
+   [PASSED] INTERNAL_ERROR tương ứng HTTP 500.
+
+- Kiểm tra Hậu kiểm thử phụ thuộc (Dependency Validation):
+{"level":"info","timestamp":"2026-07-03T07:07:01.418Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.418Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.418Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.418Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'dependent-module' ở trạng thái 'disabled'"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.418Z","message":"ModuleRegistry: Mô-đun 'dependent-module' yêu cầu dependency bắt buộc 'missing-dependency-id' nhưng hiện chưa được đăng ký trong hệ thống."}
+   [PASSED] Dependency validation trả về thất bại khi thiếu dependency bắt buộc.
+   [PASSED] Trả về cảnh báo có cấu trúc khi phát hiện thiếu dependency.
+
+[KIỂM THỬ TÍCH HỢP HTTP (TC-01 ĐẾN TC-12)]
+{"level":"info","timestamp":"2026-07-03T07:07:01.418Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.418Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.418Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.418Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.418Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.418Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] TC-01: GET /api/health trả HTTP 200 và JSON hợp lệ.
+{"level":"info","timestamp":"2026-07-03T07:07:01.443Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.443Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.443Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.443Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.443Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.443Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] TC-02: Response có header x-request-id.
+{"level":"info","timestamp":"2026-07-03T07:07:01.450Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.450Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.450Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.450Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.450Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.450Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] TC-03: Server giữ nguyên x-request-id do client gửi.
+{"level":"info","timestamp":"2026-07-03T07:07:01.457Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.457Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.457Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.457Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.457Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.457Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] TC-04: Server tự sinh requestId khi client không gửi.
+   [PASSED] TC-04: Các requestId được tạo ngẫu nhiên và khác biệt.
+{"level":"info","timestamp":"2026-07-03T07:07:01.468Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.468Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.468Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.468Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.468Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.468Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] TC-05: GET /api/runtime-config trả tasks-query ở trạng thái disabled mặc định.
+{"level":"info","timestamp":"2026-07-03T07:07:01.474Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.474Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.474Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.474Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.474Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.474Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.478Z","message":"AppError [MODULE_DISABLED]: Mô-đun 'tasks-query' hiện đang bị vô hiệu hóa từ máy chủ.","requestId":"604359ff-b096-4ed1-bcea-47808f15ce95","code":"MODULE_DISABLED"}
+   [PASSED] TC-06: Khi tasks-query disabled, GET /api/modules/tasks-query/tasks bị từ chối với MODULE_DISABLED (HTTP 403), có requestId và không trả về tasks.
+{"level":"info","timestamp":"2026-07-03T07:07:01.480Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.480Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.480Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.480Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.480Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.480Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.481Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+   [PASSED] TC-07: Sau khi bật tasks-query, GET /api/modules/tasks-query/tasks trả dữ liệu mock thành công cho admin.
+{"level":"info","timestamp":"2026-07-03T07:07:01.487Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.487Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.487Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.487Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.487Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.487Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.487Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.493Z","message":"AppError [PERMISSION_DENIED]: Tài khoản không có đủ quyền hạn. Yêu cầu quyền: tasks.read","requestId":"c601c812-78c7-4e8a-95f0-aa8be8f76e42","code":"PERMISSION_DENIED"}
+   [PASSED] TC-08: User không có tasks.read (viewer) bị từ chối truy cập (HTTP 403, PERMISSION_DENIED) cho dù module enabled.
+{"level":"info","timestamp":"2026-07-03T07:07:01.496Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.496Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.496Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.496Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.496Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.496Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.497Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'unavailable' (In-memory implementation)"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.501Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'degraded' (In-memory implementation)"}
+   [PASSED] TC-09: Core health vẫn hoạt động bình thường khi tasks-query ở trạng thái unavailable hoặc degraded.
+{"level":"info","timestamp":"2026-07-03T07:07:01.506Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.507Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.507Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.507Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.507Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.507Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.507Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.507Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.507Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] TC-10: Khởi tạo createServer nhiều lần không nhân bản hay làm trùng lặp số lượng mô-đun đăng ký.
+{"level":"info","timestamp":"2026-07-03T07:07:01.507Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.508Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.508Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.508Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.508Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.508Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] TC-11: requestInitializer chỉ chạy một lần duy nhất, bảo đảm giữ nguyên requestId trong suốt vòng đời của request.
+{"level":"info","timestamp":"2026-07-03T07:07:01.515Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.515Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.515Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] TC-12: Không có tool nghiệp vụ bất ngờ nào được phơi bày ngoài tầm kiểm soát của ToolRegistry.
+
+[KIỂM THỬ TÍCH HỢP FIREBASE (TC-FB-01 ĐẾN TC-FB-08)]
+{"level":"info","timestamp":"2026-07-03T07:07:01.515Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.515Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.515Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.515Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.515Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.515Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.517Z","message":"AppError [AUTH_REQUIRED]: Môi trường này yêu cầu xác thực bằng tài khoản thực, không chấp nhận tài khoản giả lập.","requestId":"e06a73bf-7c68-4dd6-9229-f7b3fe18db80","code":"AUTH_REQUIRED"}
+   [PASSED] TC-FB-01: Mock token bị từ chối (HTTP 401) khi ALLOW_MOCK_AUTH = false.
+{"level":"info","timestamp":"2026-07-03T07:07:01.519Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.519Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.519Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.519Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.519Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.519Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.522Z","message":"AppError [AUTH_REQUIRED]: Môi trường này yêu cầu xác thực bằng tài khoản thực, không chấp nhận tài khoản giả lập.","requestId":"836b8dba-6799-4aae-8920-9c6fa3b6bab0","code":"AUTH_REQUIRED"}
+   [PASSED] TC-FB-02: Mock token bị từ chối (HTTP 401) khi NODE_ENV = production.
+{"level":"info","timestamp":"2026-07-03T07:07:01.524Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.524Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.524Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.524Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.524Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.524Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.524Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+   [PASSED] TC-FB-03: Mock token hợp lệ trong development khi ALLOW_MOCK_AUTH = true.
+{"level":"info","timestamp":"2026-07-03T07:07:01.536Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.536Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.536Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.536Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.536Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.536Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+[AuthError] RequestId: c76b965e-12d7-45ec-b81e-85e5021ce399. Chi tiết lỗi xác thực: Decoding Firebase ID token failed. Make sure you passed the entire string JWT which represents an ID token. See https://firebase.google.com/docs/auth/admin/verify-id-tokens for details on how to retrieve an ID token.
+{"level":"warn","timestamp":"2026-07-03T07:07:01.542Z","message":"AppError [AUTH_REQUIRED]: Token không hợp lệ hoặc đã hết hạn.","requestId":"c76b965e-12d7-45ec-b81e-85e5021ce399","code":"AUTH_REQUIRED"}
+   [PASSED] TC-FB-04: Token ngẫu nhiên bị từ chối truy cập (không được tự động chấp nhận làm user simulated).
+{"level":"info","timestamp":"2026-07-03T07:07:01.544Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.544Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.544Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.544Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.544Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.544Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.544Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+   [PASSED] TC-FB-05: verifyIdToken thành công trả về dữ liệu đúng quyền người dùng.
+{"level":"info","timestamp":"2026-07-03T07:07:01.547Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.547Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.547Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.547Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.547Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.547Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+[AuthError] RequestId: 2d00d7e7-97aa-4823-9b3a-81719fa8db2a. Chi tiết lỗi xác thực: Expired ID Token
+{"level":"warn","timestamp":"2026-07-03T07:07:01.550Z","message":"AppError [AUTH_REQUIRED]: Token không hợp lệ hoặc đã hết hạn.","requestId":"2d00d7e7-97aa-4823-9b3a-81719fa8db2a","code":"AUTH_REQUIRED"}
+   [PASSED] TC-FB-06: verifyIdToken ném lỗi trả về đúng HTTP 401 (AUTH_REQUIRED).
+{"level":"info","timestamp":"2026-07-03T07:07:01.551Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.551Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.551Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.551Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.551Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.551Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.551Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.553Z","message":"AppError [PERMISSION_DENIED]: Tài khoản không có đủ quyền hạn. Yêu cầu quyền: tasks.read","requestId":"6ee288c0-5ceb-4e1b-8f3b-1c086f5dbe1e","code":"PERMISSION_DENIED"}
+   [PASSED] TC-FB-07: Role claim không hợp lệ không được nâng quyền và rơi về 'viewer' bị từ chối.
+{"level":"info","timestamp":"2026-07-03T07:07:01.554Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.554Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.554Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.554Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.554Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.554Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.554Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.556Z","message":"AppError [PERMISSION_DENIED]: Truy cập bị từ chối: Tên miền email 'gmail.com' không thuộc danh sách tên miền được phép truy cập.","requestId":"83cc1e8d-686b-4f50-8a9d-eb2f5d036212","code":"PERMISSION_DENIED"}
+   [PASSED] TC-FB-08: Địa chỉ email ngoài domain được phép bị chặn đứng thành công (HTTP 403).
+
+[KIỂM THỰ BẢO MẬT & THẮT CHẶT VỚI G2.1 - TC-HARD-01 TO TC-HARD-09]
+   [PASSED] TC-HARD-01: Production không được phép sử dụng DEV_ROLE_MAPPINGS.
+   [PASSED] TC-HARD-02: Development mapping chỉ hoạt động khi được cấu hình rõ ràng.
+Firebase Web SDK not configured (VITE_FIREBASE_API_KEY missing).
+   [PASSED] TC-MOCK-01: DEV=true và VITE_ALLOW_MOCK_AUTH=true phải kích hoạt mock auth.
+   [PASSED] TC-MOCK-01: DEV=true và VITE_ALLOW_MOCK_AUTH=true -> mock auth được bật.
+   [PASSED] TC-MOCK-02: DEV=true và VITE_ALLOW_MOCK_AUTH=false phải vô hiệu hóa mock auth.
+   [PASSED] TC-MOCK-02: DEV=true và VITE_ALLOW_MOCK_AUTH=false -> mock auth bị tắt.
+   [PASSED] TC-MOCK-03: DEV=false và VITE_ALLOW_MOCK_AUTH=true phải vô hiệu hóa mock auth.
+   [PASSED] TC-MOCK-03: DEV=false và VITE_ALLOW_MOCK_AUTH=true -> mock auth bị tắt.
+   [PASSED] TC-MOCK-04: DEV=false và VITE_ALLOW_MOCK_AUTH=false phải vô hiệu hóa mock auth.
+   [PASSED] TC-MOCK-04: DEV=false và VITE_ALLOW_MOCK_AUTH=false -> mock auth bị tắt.
+   [PASSED] TC-HARD-03: Giá trị isMockAuthAllowed thực tế không khớp với cấu hình môi trường hiện tại.
+   [PASSED] TC-HARD-03: Client mock auth khớp chính xác biểu thức logic cấu hình.
+   [PASSED] TC-HARD-04: ApiClient không tự động gửi Authorization header giả lập mock-admin khi không có token thực.
+{"level":"info","timestamp":"2026-07-03T07:07:01.649Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.649Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.649Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.649Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.649Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.649Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+[AuthError] RequestId: b716645d-f493-47d4-b07d-0c2ed43a3265. Chi tiết lỗi xác thực: Internal Firebase verify error: JSON web token signature invalid
+{"level":"warn","timestamp":"2026-07-03T07:07:01.652Z","message":"AppError [AUTH_REQUIRED]: Token không hợp lệ hoặc đã hết hạn.","requestId":"b716645d-f493-47d4-b07d-0c2ed43a3265","code":"AUTH_REQUIRED"}
+   [PASSED] TC-HARD-05: Lỗi verifyIdToken không trả chi tiết kỹ thuật nội bộ về phía client.
+{"level":"info","timestamp":"2026-07-03T07:07:01.653Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.653Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.653Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.653Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.653Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.653Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] TC-HARD-06: Firebase health an toàn, không chứa bất kỳ khóa bảo mật, đường dẫn hoặc lỗi thô nào.
+   [PASSED] TC-HARD-07: Luật bảo mật firestore.rules an toàn mặc định là deny-all hoàn toàn.
+   [PASSED] TC-HARD-08: Reset trạng thái hoạt động chính xác và cô lập hoàn toàn giữa các ca test. [DEBUG statusBefore: not-configured, statusAfter: initialized, statusFinal: not-configured]
+   [PASSED] TC-HARD-09: Xác nhận không có bất kỳ logic Firestore write (addDoc/setDoc) nào trong G2.
+
+[KIỂM THỰ G3 - PERSISTENT MODULE STATE]
+   [PASSED] TC-G3-01: set() lưu thành công bản ghi đầu tiên.
+   [PASSED] TC-G3-01: get() trả về đúng dữ liệu đã lưu.
+   [PASSED] TC-G3-02: validation lỗi khi dùng moduleId rỗng.
+   [PASSED] TC-G3-03: OCC ném lỗi CONFLICT thành công khi expectedVersion không khớp.
+{"level":"info","timestamp":"2026-07-03T07:07:01.665Z","message":"ModuleStateRepository: Khởi tạo InMemoryModuleStateRepository làm bộ lưu trữ trạng thái (Môi trường test/development)."}
+   [PASSED] TC-G3-04: Fallback về in-memory repository khi chưa cấu hình Firebase. [Chế độ thực tế: in-memory]
+{"level":"info","timestamp":"2026-07-03T07:07:01.666Z","message":"ModuleStateRepository: Khởi tạo FirestoreModuleStateRepository làm bộ lưu trữ trạng thái."}
+   [PASSED] TC-G3-05: Khởi tạo FirestoreModuleStateRepository khi đã cấu hình Firebase. [Chế độ thực tế: firestore]
+{"level":"info","timestamp":"2026-07-03T07:07:01.668Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.668Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.669Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.669Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'in-memory'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.669Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+   [PASSED] TC-G3-06: Hydrate thành công trạng thái 'enabled' của 'tasks-query' từ repository.
+{"level":"info","timestamp":"2026-07-03T07:07:01.670Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.670Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.670Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.671Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'firestore'"}
+{"level":"error","timestamp":"2026-07-03T07:07:01.671Z","message":"ModuleStateService: Hydration thất bại: Database connection lost","error":"undefined"}
+   [PASSED] TC-G3-07: Hydration xử lý an toàn lỗi của Repository, không crash và giữ trạng thái default.
+{"level":"info","timestamp":"2026-07-03T07:07:01.673Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.673Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.673Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.673Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'in-memory'"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.673Z","message":"ModuleStateService: Bỏ qua persisted state của mô-đun không tồn tại 'non-existent-module'."}
+   [PASSED] TC-G3-08: Bỏ qua an toàn các module không tồn tại mà không gặp lỗi.
+{"level":"info","timestamp":"2026-07-03T07:07:01.675Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.675Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.675Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.675Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'in-memory'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.675Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'degraded' (In-memory implementation)"}
+   [PASSED] TC-G3-09: Cập nhật thành công đồng bộ ở cả memory registry và database.
+{"level":"info","timestamp":"2026-07-03T07:07:01.677Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.677Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.677Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.677Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'disabled' (In-memory implementation)"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.677Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'firestore'"}
+{"level":"error","timestamp":"2026-07-03T07:07:01.677Z","message":"ModuleStateService: Giao dịch cập nhật trạng thái lỗi: Firestore transaction abort","error":"undefined"}
+   [PASSED] TC-G3-10: Khi database lỗi, không cập nhật registry để tránh lệch trạng thái.
+{"level":"info","timestamp":"2026-07-03T07:07:01.682Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'in-memory'"}
+   [PASSED] TC-G3-11: getPersistenceStatus trả về thông tin trạng thái đầy đủ và an toàn.
+{"level":"info","timestamp":"2026-07-03T07:07:01.685Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'in-memory'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.685Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.685Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.685Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.685Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.685Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.685Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+   [PASSED] TC-G3-12: GET /api/module-state/health hoạt động public chính xác.
+{"level":"info","timestamp":"2026-07-03T07:07:01.691Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.691Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.692Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.692Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'in-memory'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.692Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'degraded' (In-memory implementation)"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.692Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.692Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.692Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.692Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.692Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.692Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.692Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'degraded' (In-memory implementation)"}
+   [PASSED] TC-G3-13: GET /api/admin/modules/states trả dữ liệu chính xác cho quản trị viên.
+{"level":"info","timestamp":"2026-07-03T07:07:01.696Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.696Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.696Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.696Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.696Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.696Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.696Z","message":"ModuleStateRepository: Khởi tạo FirestoreModuleStateRepository làm bộ lưu trữ trạng thái."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.910Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.913Z","message":"AppError [AUTH_REQUIRED]: Yêu cầu đăng nhập để truy cập tài nguyên này.","requestId":"2f204586-2811-456b-8fc4-caa6d3e872c3","code":"AUTH_REQUIRED"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.916Z","message":"AppError [PERMISSION_DENIED]: Tài khoản không có đủ quyền hạn. Yêu cầu quyền: modules.manage","requestId":"607b7052-160d-4c0f-98c8-a83141b832a0","code":"PERMISSION_DENIED"}
+   [PASSED] TC-G3-14: Bảo vệ an toàn endpoint admin, chặn viewer và người dùng không xác thực.
+{"level":"info","timestamp":"2026-07-03T07:07:01.919Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.919Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.919Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.919Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'in-memory'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.919Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.919Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.919Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.919Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.919Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.919Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.937Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.937Z","message":"AUDIT: [module.state.changed] by user:admin-uid-15 - Status: success","auditEvent":{"id":"b309b6bb-9f80-4562-8131-ad9713e23286","timestamp":"2026-07-03T07:07:01.937Z","actor":{"type":"user","id":"admin-uid-15"},"action":"module.state.changed","moduleId":"tasks-query","requestId":"97063dbd-6417-4fdd-a9e1-4ec40bddfcec","result":"success","metadata":{"moduleId":"tasks-query","fromState":"disabled","toState":"enabled","actorUid":"admin-uid-15","version":1,"persistenceMode":"in-memory"}}}
+   [PASSED] TC-G3-15: PUT thành công, cập nhật đồng bộ database và memory, trả về payload chi tiết.
+{"level":"info","timestamp":"2026-07-03T07:07:01.938Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.938Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.938Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.938Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.938Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.938Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.939Z","message":"ModuleStateRepository: Khởi tạo FirestoreModuleStateRepository làm bộ lưu trữ trạng thái."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.978Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"warn","timestamp":"2026-07-03T07:07:01.982Z","message":"AppError [MODULE_UNAVAILABLE]: Không tìm thấy mô-đun mang ID 'unknown-module' để cập nhật.","requestId":"23793b4d-dd7d-40f4-af37-2216e05b0112","code":"MODULE_UNAVAILABLE"}
+   [PASSED] TC-G3-16: Trả về HTTP 503 MODULE_UNAVAILABLE khi cập nhật module không tồn tại.
+{"level":"info","timestamp":"2026-07-03T07:07:01.983Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.983Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.983Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:01.983Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.983Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:01.983Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.019Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"warn","timestamp":"2026-07-03T07:07:02.025Z","message":"AppError [VALIDATION_FAILED]: Trạng thái mô-đun truyền vào không hợp lệ hoặc lý do quá dài.","requestId":"7060b105-0384-40a8-95b9-a17adbb9627b","code":"VALIDATION_FAILED"}
+   [PASSED] TC-G3-17: Từ chối lưu lý do cập nhật quá dài hoặc trạng thái sai định dạng (Zod Validation).
+{"level":"info","timestamp":"2026-07-03T07:07:02.032Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.032Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.032Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.032Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'in-memory'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.032Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.033Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.033Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.033Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.033Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.033Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.033Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.033Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"warn","timestamp":"2026-07-03T07:07:02.037Z","message":"AppError [DATA_CONFLICT]: Conflict: Phiên bản không khớp. Phiên bản hiện tại là 1, nhưng yêu cầu mong đợi là 99.","requestId":"f98cb726-fe5a-4498-a6c9-43905832b433","code":"DATA_CONFLICT"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.042Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'disabled' (In-memory implementation)"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.042Z","message":"AUDIT: [module.state.changed] by user:admin-uid-18 - Status: success","auditEvent":{"id":"a474fa18-9754-44e4-9a48-b16de2a99b7b","timestamp":"2026-07-03T07:07:02.042Z","actor":{"type":"user","id":"admin-uid-18"},"action":"module.state.changed","moduleId":"tasks-query","requestId":"a16e2265-e6a8-4b54-aeab-0457e3d1c781","result":"success","metadata":{"moduleId":"tasks-query","fromState":"enabled","toState":"disabled","actorUid":"admin-uid-18","version":2,"persistenceMode":"in-memory"}}}
+   [PASSED] TC-G3-18: Kiểm soát concurrency chặt chẽ, ngăn ghi đè phiên bản lệch.
+{"level":"info","timestamp":"2026-07-03T07:07:02.044Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.044Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.044Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.044Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.044Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.044Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.044Z","message":"ModuleStateRepository: Khởi tạo FirestoreModuleStateRepository làm bộ lưu trữ trạng thái."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.075Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"warn","timestamp":"2026-07-03T07:07:02.079Z","message":"AppError [PERMISSION_DENIED]: Tài khoản không có đủ quyền hạn. Yêu cầu quyền: modules.manage","requestId":"ee3f80fc-0f11-40f9-9ff4-5d6ebc939795","code":"PERMISSION_DENIED"}
+   [PASSED] TC-G3-19: Bảo vệ chặn truy cập cập nhật cấu hình cho người dùng thiếu quyền hạn.
+   [PASSED] TC-G3-20: Trạng thái module chỉ được đọc ghi qua moduleStateRepository chuyên biệt, tuyệt đối không đụng tới collection Tasks.
+
+[KIỂM THỰ G3 HARDENING - G3.1]
+{"level":"info","timestamp":"2026-07-03T07:07:02.082Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.082Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.082Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.082Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.082Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.082Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.117Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.231Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'enabled' (In-memory implementation)"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.231Z","message":"AUDIT: [module.state.changed] by user:admin-uid-h1 - Status: success","auditEvent":{"id":"afd89aa6-a8c8-42b7-bfc8-96e551f4836b","timestamp":"2026-07-03T07:07:02.231Z","actor":{"type":"user","id":"admin-uid-h1"},"action":"module.state.changed","moduleId":"tasks-query","requestId":"37ac3885-1309-43ec-8aec-73034a3865a4","result":"success","metadata":{"moduleId":"tasks-query","fromState":"enabled","toState":"enabled","actorUid":"admin-uid-h1","version":5,"persistenceMode":"firestore"}}}
+   [PASSED] TC-G3H-01: POST endpoint /state phải bị từ chối 404/405. Thực tế: 404
+   [PASSED] TC-G3H-01: PUT endpoint /state phải khả dụng và thành công. Thực tế: 200
+   [PASSED] TC-G3H-01: PUT khả dụng và POST bị loại bỏ.
+{"level":"error","timestamp":"2026-07-03T07:07:02.234Z","message":"FirestoreModuleStateRepository.list failed: Lỗi kết nối gRPC Firestore.","error":"undefined"}
+   [PASSED] TC-G3H-02: Firestore list lỗi phải ném AppError DEPENDENCY_UNAVAILABLE.
+   [PASSED] TC-G3H-02: Firestore list lỗi ném DEPENDENCY_UNAVAILABLE thành công.
+{"level":"error","timestamp":"2026-07-03T07:07:02.235Z","message":"FirestoreModuleStateRepository.get failed for module tasks-query: Lỗi kết nối gRPC Firestore.","error":"undefined"}
+   [PASSED] TC-G3H-03: Firestore get lỗi phải ném AppError DEPENDENCY_UNAVAILABLE.
+   [PASSED] TC-G3H-03: Firestore get lỗi ném DEPENDENCY_UNAVAILABLE thành công.
+{"level":"info","timestamp":"2026-07-03T07:07:02.237Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'firestore'"}
+{"level":"error","timestamp":"2026-07-03T07:07:02.237Z","message":"ModuleStateService: Hydration thất bại: List connection failed","error":"undefined"}
+   [PASSED] TC-G3H-04: Hydration lỗi phải chuyển trạng thái lưu trữ thành degraded.
+   [PASSED] TC-G3H-04: Hydration lỗi đưa hệ thống về chế độ degraded an toàn.
+{"level":"info","timestamp":"2026-07-03T07:07:02.239Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'firestore'"}
+   [PASSED] TC-G3H-05: Collection rỗng thật là trạng thái ready hợp lệ.
+   [PASSED] TC-G3H-05: Collection rỗng thật báo ready thành công.
+{"level":"info","timestamp":"2026-07-03T07:07:02.241Z","message":"ModuleStateRepository: Khởi tạo InMemoryModuleStateRepository làm bộ lưu trữ trạng thái (Môi trường test/development)."}
+   [PASSED] TC-G3H-06: Status configured không được chọn Firestore repository. Thực tế: in-memory
+   [PASSED] TC-G3H-06: Firebase status 'configured' không kích hoạt Firestore.
+{"level":"warn","timestamp":"2026-07-03T07:07:02.243Z","message":"ModuleStateRepository: Firestore không khả dụng ở chế độ production. Đặt persistenceMode sang 'unavailable'."}
+   [PASSED] TC-G3H-07: Trong production, Firestore không dùng được thì mode phải là unavailable. Thực tế: unavailable
+   [PASSED] TC-G3H-07: Production không fallback in-memory, đặt chế độ thành unavailable.
+{"level":"info","timestamp":"2026-07-03T07:07:02.245Z","message":"ModuleStateRepository: Khởi tạo InMemoryModuleStateRepository làm bộ lưu trữ trạng thái (Môi trường test/development)."}
+   [PASSED] TC-G3H-08: Trong development, Firestore không dùng được thì mode phải là in-memory. Thực tế: in-memory
+   [PASSED] TC-G3H-08: Development fallback thành công về in-memory.
+{"level":"info","timestamp":"2026-07-03T07:07:02.246Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'firestore'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.246Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.246Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.246Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.246Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.246Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.246Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"error","timestamp":"2026-07-03T07:07:02.252Z","message":"ModuleStateService: Giao dịch cập nhật trạng thái lỗi: SECRET_PRIVATE_KEY_ERROR_GRPC_FAILED_PROJECT_ID_123","error":"undefined"}
+{"level":"warn","timestamp":"2026-07-03T07:07:02.252Z","message":"AppError [DEPENDENCY_UNAVAILABLE]: Không thể lưu trạng thái mô-đun tại thời điểm này.","requestId":"894d8ff4-14d4-4c57-958a-47b3b4718950","code":"DEPENDENCY_UNAVAILABLE"}
+   [PASSED] TC-G3H-09: Phải trả lỗi 503. Thực tế: 503
+   [PASSED] TC-G3H-09: Lỗi thô không được rò rỉ. Thực tế: Không thể lưu trạng thái mô-đun tại thời điểm này.
+   [PASSED] TC-G3H-09: Lỗi Firestore thô đã được lọc sạch trước khi trả về client.
+{"level":"info","timestamp":"2026-07-03T07:07:02.256Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'in-memory'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.256Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.256Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.256Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.256Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.256Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.256Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.260Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'disabled' (In-memory implementation)"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.261Z","message":"AUDIT: [module.state.changed] by user:admin-uid-h10 - Status: success","auditEvent":{"id":"7b40c97e-2b51-48bd-a9af-294a471b7e77","timestamp":"2026-07-03T07:07:02.261Z","actor":{"type":"user","id":"admin-uid-h10"},"action":"module.state.changed","moduleId":"tasks-query","requestId":"304f7e19-3e07-417f-842e-94b6a789c200","result":"success","metadata":{"moduleId":"tasks-query","fromState":"disabled","toState":"disabled","actorUid":"admin-uid-h10","version":1,"persistenceMode":"in-memory"}}}
+   [PASSED] TC-G3H-10: Action audit phải cố định là module.state.changed. Thực tế: module.state.changed
+   [PASSED] TC-G3H-10: Audit action ghi nhận thành công cấu trúc 'module.state.changed'.
+   [PASSED] TC-G3H-11: Metadata audit thiếu hoặc sai trường dữ liệu.
+   [PASSED] TC-G3H-11: Audit metadata chứa đầy đủ thông số structured.
+{"level":"info","timestamp":"2026-07-03T07:07:02.264Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'firestore'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.264Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.264Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.264Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.264Z","message":"ModuleRegistry: Đã xóa toàn bộ đăng ký mô-đun (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.264Z","message":"ToolRegistry: Đã xóa toàn bộ đăng ký tool (đặt lại trạng thái)."}
+{"level":"info","timestamp":"2026-07-03T07:07:02.264Z","message":"ModuleRegistry: Đăng ký thành công mô-đun 'tasks-query' ở trạng thái 'disabled'"}
+{"level":"error","timestamp":"2026-07-03T07:07:02.269Z","message":"ModuleStateService: Giao dịch cập nhật trạng thái lỗi: Save error","error":"undefined"}
+{"level":"warn","timestamp":"2026-07-03T07:07:02.269Z","message":"AppError [DEPENDENCY_UNAVAILABLE]: Không thể lưu trạng thái mô-đun tại thời điểm này.","requestId":"2f4c3202-2338-427e-93a7-6a9a215f58ad","code":"DEPENDENCY_UNAVAILABLE"}
+   [PASSED] TC-G3H-12: Khi ghi thất bại, số lượng audit log không được tăng. Trước: 4, sau: 4
+   [PASSED] TC-G3H-12: Giao dịch lỗi không lưu trữ audit log.
+{"level":"info","timestamp":"2026-07-03T07:07:02.273Z","message":"ModuleStateRepository: Đặt thủ công repository sang chế độ 'firestore'"}
+{"level":"info","timestamp":"2026-07-03T07:07:02.273Z","message":"ModuleRegistry: Mô-đun 'tasks-query' được chuyển trạng thái sang 'disabled' (In-memory implementation)"}
+   [PASSED] TC-G3H-13: Tài liệu hợp lệ phải được hydrate và đưa status về degraded.
+   [PASSED] TC-G3H-13: Hydrate tài liệu hợp lệ và đặt trạng thái degraded cho tài liệu lỗi.
+   [PASSED] TC-G3H-14: FirestoreModuleStateRepository không được tương tác với collection tasks.
+   [PASSED] TC-G3H-14: Module state hoàn toàn độc lập, không xâm nhập collection Tasks.
+   [PASSED] TC-G3H-15: Rules bảo mật bắt buộc phải duy trì trạng thái deny-all.
+   [PASSED] TC-G3H-15: Luật bảo mật firestore.rules an toàn tối đa (deny-all).
+
+[KIỂM THỰ AN TOÀN REQUEST ID]
+   [PASSED] TC-REQ-ID-SEC: Làm sạch x-request-id thành công, ngăn chặn tiêm nhiễm dòng và tràn độ dài.
+
+=================================================
+🎉 TẤT CẢ CA KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG!

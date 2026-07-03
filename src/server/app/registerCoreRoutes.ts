@@ -57,7 +57,7 @@ export function registerCoreRoutes(router: Router) {
     }
   );
 
-  router.post(
+  router.put(
     "/admin/modules/:id/state",
     authenticateRequest,
     checkPermission("modules.manage"),
@@ -83,6 +83,9 @@ export function registerCoreRoutes(router: Router) {
         const { state, reason, expectedVersion } = parseResult.data;
         const updatedBy = req.user?.uid || "system";
 
+        // Get fromState before the transaction/set operation
+        const fromState = moduleStateService.getModuleState(id);
+
         const record = await moduleStateService.setModuleState({
           moduleId: id,
           state,
@@ -94,12 +97,20 @@ export function registerCoreRoutes(router: Router) {
         auditService.logEvent({
           actor: {
             type: "user",
-            id: req.user?.uid
+            id: req.user?.uid || "system"
           },
-          action: `Cập nhật trạng thái mô-đun sang: ${state.toUpperCase()}`,
+          action: "module.state.changed",
           moduleId: id,
           requestId: req.requestId || "",
-          result: "success"
+          result: "success",
+          metadata: {
+            moduleId: id,
+            fromState,
+            toState: state,
+            actorUid: req.user?.uid || "system",
+            version: record.version,
+            persistenceMode: getRepositoryPersistenceMode()
+          }
         });
 
         res.json({

@@ -20,7 +20,7 @@ export class FirestoreModuleStateRepository implements ModuleStateRepository {
       : getFirestore(app);
   }
 
-  private mapDocToRecord(docData: any): PersistedModuleState | null {
+  private mapDocToRecord(docData: any, onInvalid?: () => void): PersistedModuleState | null {
     try {
       const parseResult = persistedModuleStateSchema.safeParse(docData);
       if (!parseResult.success) {
@@ -28,6 +28,9 @@ export class FirestoreModuleStateRepository implements ModuleStateRepository {
           `FirestoreModuleStateRepository: Dữ liệu tài liệu '${docData?.moduleId}' không hợp lệ theo schema. Bỏ qua tài liệu này.`,
           parseResult.error.format()
         );
+        if (onInvalid) {
+          onInvalid();
+        }
         return null;
       }
 
@@ -55,6 +58,9 @@ export class FirestoreModuleStateRepository implements ModuleStateRepository {
       };
     } catch (e: any) {
       logger.error(`FirestoreModuleStateRepository: Lỗi khi map document sang record: ${e.message}`);
+      if (onInvalid) {
+        onInvalid();
+      }
       return null;
     }
   }
@@ -69,9 +75,14 @@ export class FirestoreModuleStateRepository implements ModuleStateRepository {
       }
       return this.mapDocToRecord(snapshot.data());
     } catch (error: any) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error(`FirestoreModuleStateRepository.get failed for module ${moduleId}: ${error.message}`);
-      // Return null or safely ignore rather than crashing
-      return null;
+      throw new AppError(
+        "DEPENDENCY_UNAVAILABLE",
+        "Không thể truy xuất trạng thái mô-đun từ cơ sở dữ liệu tại thời điểm này."
+      );
     }
   }
 
@@ -139,7 +150,7 @@ export class FirestoreModuleStateRepository implements ModuleStateRepository {
       logger.error(`FirestoreModuleStateRepository.set failed for module ${input.moduleId}: ${error.message}`);
       throw new AppError(
         "DEPENDENCY_UNAVAILABLE",
-        `Không thể ghi trạng thái mô-đun xuống Firestore: ${error.message}`
+        "Không thể lưu trạng thái mô-đun tại thời điểm này."
       );
     }
   }
@@ -149,18 +160,31 @@ export class FirestoreModuleStateRepository implements ModuleStateRepository {
       const db = this.getDb();
       const querySnapshot = await db.collection("system_module_states").get();
       const records: PersistedModuleState[] = [];
+      let invalidCount = 0;
 
       querySnapshot.forEach((doc) => {
-        const record = this.mapDocToRecord(doc.data());
+        const record = this.mapDocToRecord(doc.data(), () => {
+          invalidCount++;
+        });
         if (record) {
           records.push(record);
         }
       });
 
+      if (invalidCount > 0) {
+        (records as any).invalidCount = invalidCount;
+      }
+
       return records;
     } catch (error: any) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error(`FirestoreModuleStateRepository.list failed: ${error.message}`);
-      return [];
+      throw new AppError(
+        "DEPENDENCY_UNAVAILABLE",
+        "Không thể truy xuất trạng thái mô-đun từ cơ sở dữ liệu tại thời điểm này."
+      );
     }
   }
 }

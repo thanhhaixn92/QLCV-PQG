@@ -28,6 +28,13 @@ async function runAllTests() {
   serverConfig.allowMockAuth = true;
   serverConfig.nodeEnv = "development";
 
+  // Khởi tạo bộ lưu trữ trạng thái in-memory sạch cho các ca kiểm thử ban đầu
+  const { setModuleStateRepository } = await import("../server/modules/state/moduleStateRepository");
+  const { InMemoryModuleStateRepository } = await import("../server/modules/state/inMemoryModuleStateRepository");
+  const { moduleStateService } = await import("../server/modules/moduleStateService");
+  setModuleStateRepository(new InMemoryModuleStateRepository(), "in-memory");
+  moduleStateService.resetHydrationState();
+
   // Helper to reset and obtain a clean application instance
   async function getCleanApp() {
     registerAllModules();
@@ -1186,7 +1193,7 @@ async function runAllTests() {
     });
     
     const res = await request(app)
-      .post("/api/admin/modules/tasks-query/state")
+      .put("/api/admin/modules/tasks-query/state")
       .set("Authorization", "Bearer token-admin-15")
       .send({
         state: "enabled",
@@ -1221,7 +1228,7 @@ async function runAllTests() {
     });
     
     const res = await request(app)
-      .post("/api/admin/modules/unknown-module/state")
+      .put("/api/admin/modules/unknown-module/state")
       .set("Authorization", "Bearer token-admin-16")
       .send({ state: "enabled" });
       
@@ -1247,7 +1254,7 @@ async function runAllTests() {
     
     const longReason = "A".repeat(501); // 501 chars
     const res = await request(app)
-      .post("/api/admin/modules/tasks-query/state")
+      .put("/api/admin/modules/tasks-query/state")
       .set("Authorization", "Bearer token-admin-17")
       .send({
         state: "enabled",
@@ -1293,7 +1300,7 @@ async function runAllTests() {
     
     // Gửi expectedVersion là 99 => conflict
     const resFail = await request(app)
-      .post("/api/admin/modules/tasks-query/state")
+      .put("/api/admin/modules/tasks-query/state")
       .set("Authorization", "Bearer token-admin-18-fail")
       .send({
         state: "disabled",
@@ -1302,7 +1309,7 @@ async function runAllTests() {
       
     // Gửi expectedVersion là 1 => thành công
     const resOk = await request(app)
-      .post("/api/admin/modules/tasks-query/state")
+      .put("/api/admin/modules/tasks-query/state")
       .set("Authorization", "Bearer token-admin-18-ok")
       .send({
         state: "disabled",
@@ -1335,7 +1342,7 @@ async function runAllTests() {
     });
     
     const res = await request(app)
-      .post("/api/admin/modules/tasks-query/state")
+      .put("/api/admin/modules/tasks-query/state")
       .set("Authorization", "Bearer token-editor-19")
       .send({ state: "enabled" });
       
@@ -1361,6 +1368,399 @@ async function runAllTests() {
     );
   } catch (error) {
     assert(false, `TC-G3-20 Thất bại: ${error}`);
+  }
+
+
+  // ==================== G3 HARDENING (G3.1 REQUIRED TESTS) ====================
+  console.log("\n[KIỂM THỰ G3 HARDENING - G3.1]");
+
+  // TC-G3H-01: PUT endpoint tồn tại và POST trả 404/405.
+  try {
+    const app = await getCleanApp();
+    setMockTokenVerifier(async () => {
+      return { uid: "admin-uid-h1", role: "admin" };
+    });
+    const resPost = await request(app)
+      .post("/api/admin/modules/tasks-query/state")
+      .set("Authorization", "Bearer token-admin-h1")
+      .send({ state: "enabled" });
+      
+    const resPut = await request(app)
+      .put("/api/admin/modules/tasks-query/state")
+      .set("Authorization", "Bearer token-admin-h1")
+      .send({ state: "enabled" });
+
+    assert(
+      resPost.status === 404 || resPost.status === 405,
+      `TC-G3H-01: POST endpoint /state phải bị từ chối 404/405. Thực tế: ${resPost.status}`
+    );
+    assert(
+      resPut.status === 200,
+      `TC-G3H-01: PUT endpoint /state phải khả dụng và thành công. Thực tế: ${resPut.status}`
+    );
+    console.log("   [PASSED] TC-G3H-01: PUT khả dụng và POST bị loại bỏ.");
+  } catch (error) {
+    assert(false, `TC-G3H-01 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-02: Firestore list lỗi không trả [].
+  try {
+    const { FirestoreModuleStateRepository } = await import("../server/modules/state/firestoreModuleStateRepository");
+    const repo = new FirestoreModuleStateRepository();
+    (repo as any).getDb = () => {
+      throw new Error("Lỗi kết nối gRPC Firestore.");
+    };
+    
+    let threw = false;
+    try {
+      await repo.list();
+    } catch (err: any) {
+      if (err.code === "DEPENDENCY_UNAVAILABLE") {
+        threw = true;
+      }
+    }
+    assert(threw, "TC-G3H-02: Firestore list lỗi phải ném AppError DEPENDENCY_UNAVAILABLE.");
+    console.log("   [PASSED] TC-G3H-02: Firestore list lỗi ném DEPENDENCY_UNAVAILABLE thành công.");
+  } catch (error) {
+    assert(false, `TC-G3H-02 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-03: Firestore get lỗi không trả null.
+  try {
+    const { FirestoreModuleStateRepository } = await import("../server/modules/state/firestoreModuleStateRepository");
+    const repo = new FirestoreModuleStateRepository();
+    (repo as any).getDb = () => {
+      throw new Error("Lỗi kết nối gRPC Firestore.");
+    };
+    
+    let threw = false;
+    try {
+      await repo.get("tasks-query");
+    } catch (err: any) {
+      if (err.code === "DEPENDENCY_UNAVAILABLE") {
+        threw = true;
+      }
+    }
+    assert(threw, "TC-G3H-03: Firestore get lỗi phải ném AppError DEPENDENCY_UNAVAILABLE.");
+    console.log("   [PASSED] TC-G3H-03: Firestore get lỗi ném DEPENDENCY_UNAVAILABLE thành công.");
+  } catch (error) {
+    assert(false, `TC-G3H-03 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-04: Hydration lỗi → hydrated=false và status=degraded.
+  try {
+    const { moduleStateService } = await import("../server/modules/moduleStateService");
+    const { setModuleStateRepository, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    
+    moduleStateService.resetHydrationState();
+    const failingRepo = {
+      async list() {
+        throw new Error("List connection failed");
+      },
+      async get() { return null; },
+      async set() { throw new Error(); }
+    };
+    
+    setModuleStateRepository(failingRepo, "firestore");
+    const res = await moduleStateService.hydrateFromRepository();
+    const status = moduleStateService.getPersistenceStatus();
+    
+    assert(
+      res.success === false &&
+      status.hydrated === false &&
+      status.status === "degraded",
+      "TC-G3H-04: Hydration lỗi phải chuyển trạng thái lưu trữ thành degraded."
+    );
+    console.log("   [PASSED] TC-G3H-04: Hydration lỗi đưa hệ thống về chế độ degraded an toàn.");
+    resetRepositoryMode();
+  } catch (error) {
+    assert(false, `TC-G3H-04 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-05: Collection rỗng thật → hydrated=true, status=ready.
+  try {
+    const { moduleStateService } = await import("../server/modules/moduleStateService");
+    const { setModuleStateRepository, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    
+    moduleStateService.resetHydrationState();
+    const emptyRepo = {
+      async list() {
+        return [];
+      },
+      async get() { return null; },
+      async set() { throw new Error(); }
+    };
+    
+    setModuleStateRepository(emptyRepo, "firestore");
+    const res = await moduleStateService.hydrateFromRepository();
+    const status = moduleStateService.getPersistenceStatus();
+    
+    assert(
+      res.success === true &&
+      status.hydrated === true &&
+      status.status === "ready",
+      "TC-G3H-05: Collection rỗng thật là trạng thái ready hợp lệ."
+    );
+    console.log("   [PASSED] TC-G3H-05: Collection rỗng thật báo ready thành công.");
+    resetRepositoryMode();
+  } catch (error) {
+    assert(false, `TC-G3H-05 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-06: Firebase status=configured không chọn Firestore repository.
+  try {
+    const { getModuleStateRepository, getRepositoryPersistenceMode, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    const { setAdminStatusForTest, resetFirebaseAdminStatus } = await import("../server/infrastructure/firebase/firebaseAdmin");
+    
+    resetRepositoryMode();
+    await resetFirebaseAdminStatus();
+    setAdminStatusForTest("configured");
+    
+    const mode = getRepositoryPersistenceMode();
+    assert(
+      mode !== "firestore",
+      `TC-G3H-06: Status configured không được chọn Firestore repository. Thực tế: ${mode}`
+    );
+    console.log("   [PASSED] TC-G3H-06: Firebase status 'configured' không kích hoạt Firestore.");
+    await resetFirebaseAdminStatus();
+    resetRepositoryMode();
+  } catch (error) {
+    assert(false, `TC-G3H-06 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-07: Production không có Firestore usable → mode=unavailable.
+  try {
+    const { getRepositoryPersistenceMode, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    const { resetFirebaseAdminStatus, setAdminStatusForTest } = await import("../server/infrastructure/firebase/firebaseAdmin");
+    
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    
+    resetRepositoryMode();
+    await resetFirebaseAdminStatus();
+    setAdminStatusForTest("configured");
+    
+    const mode = getRepositoryPersistenceMode();
+    assert(
+      mode === "unavailable",
+      `TC-G3H-07: Trong production, Firestore không dùng được thì mode phải là unavailable. Thực tế: ${mode}`
+    );
+    
+    process.env.NODE_ENV = originalEnv;
+    await resetFirebaseAdminStatus();
+    resetRepositoryMode();
+    console.log("   [PASSED] TC-G3H-07: Production không fallback in-memory, đặt chế độ thành unavailable.");
+  } catch (error) {
+    assert(false, `TC-G3H-07 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-08: Development không có Firestore → mode=in-memory.
+  try {
+    const { getRepositoryPersistenceMode, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    const { resetFirebaseAdminStatus, setAdminStatusForTest } = await import("../server/infrastructure/firebase/firebaseAdmin");
+    
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    
+    resetRepositoryMode();
+    await resetFirebaseAdminStatus();
+    setAdminStatusForTest("configured");
+    
+    const mode = getRepositoryPersistenceMode();
+    assert(
+      mode === "in-memory",
+      `TC-G3H-08: Trong development, Firestore không dùng được thì mode phải là in-memory. Thực tế: ${mode}`
+    );
+    
+    process.env.NODE_ENV = originalEnv;
+    await resetFirebaseAdminStatus();
+    resetRepositoryMode();
+    console.log("   [PASSED] TC-G3H-08: Development fallback thành công về in-memory.");
+  } catch (error) {
+    assert(false, `TC-G3H-08 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-09: Raw Firestore error không xuất hiện trong API response.
+  try {
+    const { setModuleStateRepository, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    
+    const failingRepo = {
+      async get() { return null; },
+      async list() { return []; },
+      async set() {
+        throw new Error("SECRET_PRIVATE_KEY_ERROR_GRPC_FAILED_PROJECT_ID_123");
+      }
+    };
+    
+    setModuleStateRepository(failingRepo as any, "firestore");
+    const app = await getCleanApp();
+    
+    setMockTokenVerifier(async () => {
+      return { uid: "admin-uid-h9", role: "admin" };
+    });
+    
+    const res = await request(app)
+      .put("/api/admin/modules/tasks-query/state")
+      .set("Authorization", "Bearer token-h9")
+      .send({ state: "enabled" });
+      
+    assert(
+      res.status === 503,
+      `TC-G3H-09: Phải trả lỗi 503. Thực tế: ${res.status}`
+    );
+    assert(
+      res.body.error?.message === "Không thể lưu trạng thái mô-đun tại thời điểm này.",
+      `TC-G3H-09: Lỗi thô không được rò rỉ. Thực tế: ${res.body.error?.message}`
+    );
+    console.log("   [PASSED] TC-G3H-09: Lỗi Firestore thô đã được lọc sạch trước khi trả về client.");
+    resetRepositoryMode();
+  } catch (error) {
+    assert(false, `TC-G3H-09 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-10: Audit action là module.state.changed.
+  // TC-G3H-11: Audit metadata có fromState, toState, version, actorUid.
+  try {
+    const { setModuleStateRepository, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    const { InMemoryModuleStateRepository } = await import("../server/modules/state/inMemoryModuleStateRepository");
+    const { auditService } = await import("../server/audit/auditService");
+    
+    const mockRepo = new InMemoryModuleStateRepository();
+    setModuleStateRepository(mockRepo, "in-memory");
+    const app = await getCleanApp();
+    
+    setMockTokenVerifier(async () => {
+      return { uid: "admin-uid-h10", role: "admin" };
+    });
+    
+    await request(app)
+      .put("/api/admin/modules/tasks-query/state")
+      .set("Authorization", "Bearer token-h10")
+      .send({ state: "disabled" });
+      
+    const recentLogs = auditService.getRecentLogs();
+    const latestLog = recentLogs[0];
+    
+    assert(
+      latestLog.action === "module.state.changed",
+      `TC-G3H-10: Action audit phải cố định là module.state.changed. Thực tế: ${latestLog.action}`
+    );
+    console.log("   [PASSED] TC-G3H-10: Audit action ghi nhận thành công cấu trúc 'module.state.changed'.");
+    
+    const meta = latestLog.metadata;
+    assert(
+      meta &&
+      meta.moduleId === "tasks-query" &&
+      meta.toState === "disabled" &&
+      meta.actorUid === "admin-uid-h10" &&
+      typeof meta.version === "number",
+      "TC-G3H-11: Metadata audit thiếu hoặc sai trường dữ liệu."
+    );
+    console.log("   [PASSED] TC-G3H-11: Audit metadata chứa đầy đủ thông số structured.");
+    resetRepositoryMode();
+  } catch (error) {
+    assert(false, `TC-G3H-10/11 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-12: Write thất bại không ghi success audit.
+  try {
+    const { setModuleStateRepository, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    const { auditService } = await import("../server/audit/auditService");
+    
+    const failingRepo = {
+      async get() { return null; },
+      async list() { return []; },
+      async set() {
+        throw new Error("Save error");
+      }
+    };
+    setModuleStateRepository(failingRepo as any, "firestore");
+    const app = await getCleanApp();
+    
+    setMockTokenVerifier(async () => {
+      return { uid: "admin-uid-h12", role: "admin" };
+    });
+    
+    const logsBefore = auditService.getRecentLogs().length;
+    
+    await request(app)
+      .put("/api/admin/modules/tasks-query/state")
+      .set("Authorization", "Bearer token-h12")
+      .send({ state: "disabled" });
+      
+    const logsAfter = auditService.getRecentLogs().length;
+    
+    assert(
+      logsBefore === logsAfter,
+      `TC-G3H-12: Khi ghi thất bại, số lượng audit log không được tăng. Trước: ${logsBefore}, sau: ${logsAfter}`
+    );
+    console.log("   [PASSED] TC-G3H-12: Giao dịch lỗi không lưu trữ audit log.");
+    resetRepositoryMode();
+  } catch (error) {
+    assert(false, `TC-G3H-12 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-13: Invalid document làm health degraded nhưng document hợp lệ vẫn hydrate.
+  try {
+    const { moduleStateService } = await import("../server/modules/moduleStateService");
+    const { setModuleStateRepository, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    
+    moduleStateService.resetHydrationState();
+    
+    const records: any = [
+      { moduleId: "tasks-query", state: "disabled", version: 1, updatedAt: new Date(), updatedBy: "system" }
+    ];
+    // Attach invalidCount
+    records.invalidCount = 1;
+    
+    const mixedRepo = {
+      async list() {
+        return records;
+      },
+      async get() { return null; },
+      async set() { throw new Error(); }
+    };
+    
+    setModuleStateRepository(mixedRepo, "firestore");
+    const res = await moduleStateService.hydrateFromRepository();
+    const status = moduleStateService.getPersistenceStatus();
+    
+    assert(
+      res.success === true &&
+      res.count === 1 &&
+      status.status === "degraded",
+      "TC-G3H-13: Tài liệu hợp lệ phải được hydrate và đưa status về degraded."
+    );
+    console.log("   [PASSED] TC-G3H-13: Hydrate tài liệu hợp lệ và đặt trạng thái degraded cho tài liệu lỗi.");
+    resetRepositoryMode();
+  } catch (error) {
+    assert(false, `TC-G3H-13 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-14: Không có Tasks read/write.
+  try {
+    const fs = await import("fs");
+    const content = fs.readFileSync("src/server/modules/state/firestoreModuleStateRepository.ts", "utf-8");
+    assert(
+      !content.includes("collection(\"tasks\")") && !content.includes("collection('tasks')"),
+      "TC-G3H-14: FirestoreModuleStateRepository không được tương tác với collection tasks."
+    );
+    console.log("   [PASSED] TC-G3H-14: Module state hoàn toàn độc lập, không xâm nhập collection Tasks.");
+  } catch (error) {
+    assert(false, `TC-G3H-14 Thất bại: ${error}`);
+  }
+
+  // TC-G3H-15: firestore.rules vẫn deny-all.
+  try {
+    const fs = await import("fs");
+    const content = fs.readFileSync("firestore.rules", "utf-8");
+    assert(
+      content.includes("allow read, write: if false;"),
+      "TC-G3H-15: Rules bảo mật bắt buộc phải duy trì trạng thái deny-all."
+    );
+    console.log("   [PASSED] TC-G3H-15: Luật bảo mật firestore.rules an toàn tối đa (deny-all).");
+  } catch (error) {
+    assert(false, `TC-G3H-15 Thất bại: ${error}`);
   }
 
 

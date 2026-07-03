@@ -14,6 +14,7 @@ let adminStatus: FirebaseAdminStatus = "not-configured";
 let initErrorMsg: string | null = null;
 let isMockedMode = false;
 let isProbed = false;
+let isStatusOverridden = false;
 
 // Mock verifier for isolated unit/integration tests without secrets
 let mockTokenVerifier: ((token: string) => Promise<any>) | null = null;
@@ -158,7 +159,9 @@ export interface FirebaseConnectionStatus {
 
 export const getFirebaseStatus = (): FirebaseConnectionStatus => {
   // Ensure we have attempted initialization
-  initFirebaseAdmin();
+  if (!isStatusOverridden) {
+    initFirebaseAdmin();
+  }
 
   const activeApps = getApps();
   const isInit = activeApps && activeApps.length > 0;
@@ -211,6 +214,11 @@ export async function verifyIdToken(token: string): Promise<any> {
   return await getAuth(app).verifyIdToken(token);
 }
 
+export function setAdminStatusForTest(status: FirebaseAdminStatus) {
+  adminStatus = status;
+  isStatusOverridden = true;
+}
+
 // Helper for testing resets
 export const resetFirebaseAdminStatus = async () => {
   const activeApps = getApps();
@@ -225,4 +233,5 @@ export const resetFirebaseAdminStatus = async () => {
   initErrorMsg = null;
   isMockedMode = false;
   isProbed = false;
+  isStatusOverridden = false;
 };
