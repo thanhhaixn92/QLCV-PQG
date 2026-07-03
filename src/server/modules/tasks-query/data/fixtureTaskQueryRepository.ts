@@ -401,7 +401,7 @@ export class FixtureTaskQueryRepository implements TaskQueryRepository {
 
     // 4. Implement Cursor-based Pagination
     if (query.cursor) {
-      const cursorData = taskCursor.deserialize(query.cursor, sortBy);
+      const cursorData = taskCursor.deserialize(query.cursor, sortBy, query);
       const cursorVal = cursorData.sortValue;
       const cursorTime = cursorVal ? new Date(cursorVal as string).getTime() : null;
       const cursorDocId = cursorData.documentId;
@@ -450,7 +450,7 @@ export class FixtureTaskQueryRepository implements TaskQueryRepository {
         sortBy,
         sortValue: lastItem[sortBy],
         documentId: lastItem.id
-      });
+      }, query);
     }
 
     return {

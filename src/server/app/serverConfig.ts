@@ -13,6 +13,7 @@ export interface ServerConfig {
   allowedEmailDomains: string[];
   allowMockAuth: boolean;
   devRoleMappings: string | undefined;
+  tasksTimestampMode: string | undefined;
 }
 
 const parseAllowedDomains = (val: string | undefined): string[] => {
@@ -32,6 +33,7 @@ export const serverConfig: ServerConfig = {
   allowedEmailDomains: parseAllowedDomains(process.env.ALLOWED_EMAIL_DOMAINS),
   allowMockAuth: process.env.ALLOW_MOCK_AUTH === "true",
   devRoleMappings: process.env.DEV_ROLE_MAPPINGS,
+  tasksTimestampMode: process.env.TASKS_TIMESTAMP_MODE,
 };
 
 export function validateConfig() {

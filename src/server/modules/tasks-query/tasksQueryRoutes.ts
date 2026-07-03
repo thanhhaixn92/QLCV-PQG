@@ -19,7 +19,6 @@ export function registerTasksQueryRoutes(router: Router) {
         res.json({
           success: true,
           data: result,
-          tasks: result.items, // Backward compatibility with legacy tests
           requestId: req.requestId
         });
       } catch (error) {

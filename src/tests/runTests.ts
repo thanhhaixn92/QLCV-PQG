@@ -224,8 +224,8 @@ async function runAllTests() {
       res.status === 403 &&
       res.body?.error?.code === "MODULE_DISABLED" &&
       res.headers["x-request-id"] !== undefined &&
-      res.body?.tasks === undefined,
-      "TC-06: Khi tasks-query disabled, GET /api/modules/tasks-query/tasks bị từ chối với MODULE_DISABLED (HTTP 403), có requestId và không trả về tasks."
+      res.body?.data === undefined,
+      "TC-06: Khi tasks-query disabled, GET /api/modules/tasks-query/tasks bị từ chối với MODULE_DISABLED (HTTP 403), có requestId và không trả về data."
     );
   } catch (error) {
     assert(false, `TC-06 Thất bại: ${error}`);
@@ -241,8 +241,8 @@ async function runAllTests() {
     assert(
       res.status === 200 &&
       res.body?.success === true &&
-      Array.isArray(res.body?.tasks) &&
-      res.body.tasks.length > 0,
+      Array.isArray(res.body?.data?.items) &&
+      res.body.data.items.length > 0,
       "TC-07: Sau khi bật tasks-query, GET /api/modules/tasks-query/tasks trả dữ liệu mock thành công cho admin."
     );
   } catch (error) {

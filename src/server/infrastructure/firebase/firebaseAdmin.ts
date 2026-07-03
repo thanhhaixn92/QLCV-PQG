@@ -1,6 +1,8 @@
 import { getApps, initializeApp, App, cert, applicationDefault, deleteApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore, Firestore } from "firebase-admin/firestore";
 import { serverConfig } from "../../app/serverConfig";
+import { AppError } from "../../../shared/errors/appError";
 
 export type FirebaseAdminStatus =
   | "not-configured"
@@ -235,3 +237,25 @@ export const resetFirebaseAdminStatus = async () => {
   isProbed = false;
   isStatusOverridden = false;
 };
+
+export function getConfiguredFirestore(): Firestore {
+  const app = initFirebaseAdmin();
+  if (!app) {
+    throw new AppError(
+      "DEPENDENCY_UNAVAILABLE",
+      "Firebase Admin SDK chưa được khởi tạo. Không thể truy cập Firestore."
+    );
+  }
+
+  const isProduction = serverConfig.nodeEnv === "production" || process.env.NODE_ENV === "production";
+  const databaseId = serverConfig.firebaseDatabaseId;
+
+  if (isProduction && !databaseId) {
+    throw new AppError(
+      "DEPENDENCY_UNAVAILABLE",
+      "Cấu hình hệ thống thiếu định danh cơ sở dữ liệu (FIREBASE_DATABASE_ID) bắt buộc trong môi trường production."
+    );
+  }
+
+  return databaseId ? getFirestore(app, databaseId) : getFirestore(app);
+}

@@ -1,5 +1,5 @@
-import { initFirebaseAdmin } from "../../infrastructure/firebase/firebaseAdmin";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { initFirebaseAdmin, getConfiguredFirestore } from "../../infrastructure/firebase/firebaseAdmin";
+import { Timestamp } from "firebase-admin/firestore";
 import { serverConfig } from "../../app/serverConfig";
 import { ModuleStateRepository, PersistedModuleState, SetModuleStateInput, ModuleStateListResult } from "./moduleStateTypes";
 import { persistedModuleStateSchema } from "./moduleStateSchemas";
@@ -8,16 +8,7 @@ import { logger } from "../../infrastructure/logging/logger";
 
 export class FirestoreModuleStateRepository implements ModuleStateRepository {
   private getDb() {
-    const app = initFirebaseAdmin();
-    if (!app) {
-      throw new AppError(
-        "DEPENDENCY_UNAVAILABLE",
-        "Firebase Admin SDK chưa được khởi tạo. Không thể truy cập Firestore."
-      );
-    }
-    return serverConfig.firebaseDatabaseId
-      ? getFirestore(app, serverConfig.firebaseDatabaseId)
-      : getFirestore(app);
+    return getConfiguredFirestore();
   }
 
   private mapDocToRecord(docData: any, onInvalid?: () => void): PersistedModuleState | null {

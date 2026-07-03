@@ -1,12 +1,18 @@
-import { getFirestore, Filter } from "firebase-admin/firestore";
+import { Filter, Query, DocumentData, Timestamp } from "firebase-admin/firestore";
 import { TaskQueryRepository } from "./taskQueryTypes";
-import { TaskSummary, TaskStatus, TaskPriority } from "../../../../shared/contracts/tasks/taskContracts";
+import { TaskSummary } from "../../../../shared/contracts/tasks/taskContracts";
 import { TaskListQuery, TaskListResult, TaskQueryContext } from "../../../../shared/contracts/tasks/taskQueryContracts";
-import { getFirebaseStatus } from "../../../infrastructure/firebase/firebaseAdmin";
+import { getFirebaseStatus, getConfiguredFirestore } from "../../../infrastructure/firebase/firebaseAdmin";
 import { AppError } from "../../../../shared/errors/appError";
 import { taskDocumentMapper } from "./taskDocumentMapper";
 import { taskCursor } from "./taskCursor";
 import { logger } from "../../../infrastructure/logging/logger";
+import { serverConfig } from "../../../app/serverConfig";
+
+interface FirestoreErrorLike {
+  code?: number;
+  message?: string;
+}
 
 export class FirestoreTaskQueryRepository implements TaskQueryRepository {
   private collectionName: string;
@@ -36,11 +42,11 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
     const sortBy = query.sortBy ?? "updatedAt";
     const sortDirection = query.sortDirection ?? "desc";
 
-    const db = getFirestore();
+    const db = getConfiguredFirestore();
     const collectionRef = db.collection(this.collectionName);
 
     // 1. Build Base Security and Business Filters
-    let queryRef: any = collectionRef;
+    let queryRef: Query<DocumentData> = collectionRef;
 
     // Apply selective projection for performance & data minimalization
     queryRef = queryRef.select(
@@ -60,7 +66,7 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
     );
 
     // Dynamic filtering array
-    const filters: any[] = [];
+    const filters: Filter[] = [];
 
     // RBAC Security Policy
     const isAdmin = context.actorRole === "admin" || context.permissions.includes("tasks.manage");
@@ -68,11 +74,21 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
     const hasReadPermission = context.permissions.includes("tasks.read");
 
     if (isAdmin) {
-      // Admin bypasses security constraints
+      // Admin bypasses security constraints, applies direct query filters
+      if (query.assigneeUid) {
+        filters.push(
+          Filter.or(
+            Filter.where("assignee.uid", "==", query.assigneeUid),
+            Filter.where("assigneeUid", "==", query.assigneeUid)
+          )
+        );
+      }
+      if (query.departmentId) {
+        filters.push(Filter.where("departmentId", "==", query.departmentId));
+      }
     } else if (hasDeptPermission) {
       const authorizedDepts = context.departmentIds ?? [];
       if (authorizedDepts.length === 0) {
-        // Safe early return: authorized but has no assigned departments
         return {
           items: [],
           pageInfo: { nextCursor: null, hasNextPage: false },
@@ -81,12 +97,47 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
         };
       }
       
-      // Firestore IN operator max limit is 10 items
-      const cappedDepts = authorizedDepts.slice(0, 10);
-      filters.push(Filter.where("departmentId", "in", cappedDepts));
+      if (authorizedDepts.length > 10) {
+        throw new AppError(
+          "VALIDATION_FAILED",
+          "Truy cập đồng thời trên hơn 10 phòng ban hiện chưa được hệ thống hỗ trợ."
+        );
+      }
+
+      if (query.departmentId) {
+        if (!authorizedDepts.includes(query.departmentId)) {
+          throw new AppError(
+            "PERMISSION_DENIED",
+            "Bạn không có quyền truy cập dữ liệu của phòng ban được yêu cầu."
+          );
+        }
+        filters.push(Filter.where("departmentId", "==", query.departmentId));
+      } else {
+        filters.push(Filter.where("departmentId", "in", authorizedDepts));
+      }
+
+      if (query.assigneeUid) {
+        filters.push(
+          Filter.or(
+            Filter.where("assignee.uid", "==", query.assigneeUid),
+            Filter.where("assigneeUid", "==", query.assigneeUid)
+          )
+        );
+      }
     } else if (hasReadPermission) {
       const actorUid = context.actorUid || "anonymous";
-      // Support legacy structure + new structure
+      
+      if (query.assigneeUid && query.assigneeUid !== actorUid) {
+        throw new AppError(
+          "PERMISSION_DENIED",
+          "Bạn không có quyền truy cập công việc của người dùng khác."
+        );
+      }
+
+      if (query.departmentId) {
+        filters.push(Filter.where("departmentId", "==", query.departmentId));
+      }
+
       filters.push(
         Filter.or(
           Filter.where("creator.uid", "==", actorUid),
@@ -96,7 +147,6 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
         )
       );
     } else {
-      // User has no valid tasks query permission
       return {
         items: [],
         pageInfo: { nextCursor: null, hasNextPage: false },
@@ -112,27 +162,35 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
     if (query.priority) {
       filters.push(Filter.where("priority", "==", query.priority));
     }
-    if (query.assigneeUid) {
-      filters.push(
-        Filter.or(
-          Filter.where("assignee.uid", "==", query.assigneeUid),
-          Filter.where("assigneeUid", "==", query.assigneeUid)
-        )
-      );
-    }
-    if (query.departmentId) {
-      filters.push(Filter.where("departmentId", "==", query.departmentId));
+
+    // Apply Date Range Filters with strict type strategies
+    const tsMode = serverConfig.tasksTimestampMode || process.env.TASKS_TIMESTAMP_MODE;
+    const hasDateFilters = query.dueFrom || query.dueTo || query.updatedAfter;
+
+    if (hasDateFilters) {
+      if (tsMode !== "firestore" && tsMode !== "iso-string") {
+        throw new AppError(
+          "VALIDATION_FAILED",
+          "Truy vấn khoảng thời gian (date range filter) chưa được cấu hình chế độ dữ liệu (TASKS_TIMESTAMP_MODE)."
+        );
+      }
     }
 
-    // Apply Date Range Filters
+    const toFirestoreValue = (isoStr: string) => {
+      if (tsMode === "firestore") {
+        return Timestamp.fromDate(new Date(isoStr));
+      }
+      return isoStr;
+    };
+
     if (query.dueFrom) {
-      filters.push(Filter.where("dueAt", ">=", query.dueFrom));
+      filters.push(Filter.where("dueAt", ">=", toFirestoreValue(query.dueFrom)));
     }
     if (query.dueTo) {
-      filters.push(Filter.where("dueAt", "<=", query.dueTo));
+      filters.push(Filter.where("dueAt", "<=", toFirestoreValue(query.dueTo)));
     }
     if (query.updatedAfter) {
-      filters.push(Filter.where("updatedAt", ">=", query.updatedAfter));
+      filters.push(Filter.where("updatedAt", ">=", toFirestoreValue(query.updatedAfter)));
     }
 
     // Attach all accumulated filters as an AND filter if any exist
@@ -143,37 +201,59 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
     // Sorting definition (Must sort by custom sortBy then sub-sort stable by __name__ / ID)
     queryRef = queryRef.orderBy(sortBy, sortDirection).orderBy("__name__", sortDirection);
 
-    // Apply lookahead limit
-    queryRef = queryRef.limit(limit + 1);
-
-    // Pagination cursor handling
-    if (query.cursor) {
-      const cursorData = taskCursor.deserialize(query.cursor, sortBy);
-      
-      // Let's handle different Firestore types for cursor sorting value.
-      // If the sort value is a valid ISO date, we can pass it as a string to startAfter.
-      let sortVal = cursorData.sortValue;
-      queryRef = queryRef.startAfter(sortVal, cursorData.documentId);
-    }
+    let items: TaskSummary[] = [];
+    let invalidRecordCount = 0;
+    const maxLoops = 5;
+    let currentLoop = 0;
+    let lastProcessedDoc: DocumentData | null = null;
 
     try {
-      const snapshot = await queryRef.get();
-      const docs = snapshot.docs;
+      while (items.length < limit + 1 && currentLoop < maxLoops) {
+        let batchQuery = queryRef;
+        const fetchSize = limit + 1 - items.length;
+        batchQuery = batchQuery.limit(fetchSize);
 
-      let items: TaskSummary[] = [];
-      let invalidRecordCount = 0;
-
-      for (const doc of docs) {
-        const mapped = taskDocumentMapper.map(doc.id, doc.data(), "firestore");
-        if (mapped) {
-          items.push(mapped);
-        } else {
-          invalidRecordCount++;
+        if (lastProcessedDoc) {
+          batchQuery = batchQuery.startAfter(lastProcessedDoc);
+        } else if (query.cursor) {
+          const cursorData = taskCursor.deserialize(query.cursor, sortBy, query);
+          let sortVal: string | number | null | Timestamp = cursorData.sortValue;
+          
+          if (sortBy === "dueAt" || sortBy === "updatedAt" || sortBy === "createdAt") {
+            if (tsMode === "firestore" && typeof sortVal === "string") {
+              sortVal = Timestamp.fromDate(new Date(sortVal));
+            }
+          }
+          batchQuery = batchQuery.startAfter(sortVal, cursorData.documentId);
         }
+
+        const snapshot = await batchQuery.get();
+        const docs = snapshot.docs;
+        if (docs.length === 0) {
+          break;
+        }
+
+        for (const doc of docs) {
+          lastProcessedDoc = doc;
+          const mapped = taskDocumentMapper.map(doc.id, doc.data(), "firestore");
+          if (mapped) {
+            items.push(mapped);
+            if (items.length >= limit + 1) {
+              break;
+            }
+          } else {
+            invalidRecordCount++;
+          }
+        }
+
+        if (docs.length < fetchSize) {
+          break;
+        }
+        currentLoop++;
       }
 
       // Check lookahead
-      const hasLookahead = docs.length > limit;
+      const hasLookahead = items.length > limit;
       let hasNextPage = hasLookahead;
 
       // Slice items to meet exact limit
@@ -187,9 +267,9 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
         const lastItem = items[items.length - 1];
         nextCursor = taskCursor.serialize({
           sortBy,
-          sortValue: lastItem[sortBy],
+          sortValue: lastItem[sortBy as "updatedAt" | "dueAt" | "createdAt"] as string | number | null,
           documentId: lastItem.id
-        });
+        }, query);
       }
 
       if (invalidRecordCount > 0) {
@@ -212,18 +292,17 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
         source: "firestore"
       };
     } catch (error: unknown) {
-      const err = error as any;
+      const err = error as FirestoreErrorLike;
       // Handle Missing Composite Index beautifully
-      if (err.code === 9 || (typeof err.message === "string" && err.message.includes("FAILED_PRECONDITION"))) {
-        const match = err.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);
+      if (err && (err.code === 9 || (typeof err.message === "string" && err.message.includes("FAILED_PRECONDITION")))) {
+        const match = typeof err.message === "string" ? err.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/) : null;
         const indexUrl = match ? match[0] : null;
         logger.error(
-          `FirestoreTaskQueryRepository: Thiếu index composite cho truy vấn này. Lỗi: ${err.message}`
+          `FirestoreTaskQueryRepository: Thiếu index composite cho truy vấn này. URL tạo: ${indexUrl || "N/A"}. Lỗi gốc: ${err.message}`
         );
         throw new AppError(
           "DEPENDENCY_UNAVAILABLE",
-          `Hệ thống yêu cầu thiết lập chỉ mục composite Firestore.` +
-            (indexUrl ? ` Vui lòng truy cập liên kết sau để tạo chỉ mục: ${indexUrl}` : "")
+          "Truy vấn công việc hiện chưa được hệ thống hỗ trợ đầy đủ."
         );
       }
 
@@ -237,7 +316,7 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
   }
 
   async getById(taskId: string, context: TaskQueryContext): Promise<TaskSummary | null> {
-    const db = getFirestore();
+    const db = getConfiguredFirestore();
     try {
       const doc = await db.collection(this.collectionName).doc(taskId).get();
       if (!doc.exists) {
@@ -263,7 +342,10 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
         }
       } else if (hasReadPermission) {
         const actorUid = context.actorUid;
-        if (task.creator?.uid === actorUid || task.assignee?.uid === actorUid) {
+        if (
+          task.creator?.uid === actorUid ||
+          task.assignee?.uid === actorUid
+        ) {
           return task;
         }
       }
