@@ -6,7 +6,7 @@ import { requireModuleEnabled } from "../../moduleStateService";
 import { taskCommandService } from "../services/taskCommandService";
 import { AppError } from "../../../../shared/errors/appError";
 import { ROLE_PERMISSIONS, UserRole } from "../../../../shared/permissions/permissions";
-import { TaskCommandContext } from "../contracts/taskCommandTypes";
+import { TaskCommandContext, AssignTaskCommand } from "../contracts/taskCommandTypes";
 import {
   createTaskSchema,
   updateTaskSchema,
@@ -106,7 +106,7 @@ export function registerTaskCommandRoutes(router: Router) {
         }
 
         const context = getCommandContext(req);
-        const result = await taskCommandService.assignTask(taskId, bodyParse.data, context);
+        const result = await taskCommandService.assignTask(taskId, bodyParse.data as AssignTaskCommand, context);
 
         res.json({
           success: true,

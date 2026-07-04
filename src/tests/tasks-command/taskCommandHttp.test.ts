@@ -8,6 +8,8 @@ import { resetMockTasksStore } from "../../server/modules/tasks-command/data/inM
 import { setTaskCommandRepository, resetTaskCommandRepository } from "../../server/modules/tasks-command/data/taskCommandRepository";
 import { InMemoryTaskCommandRepository } from "../../server/modules/tasks-command/data/inMemoryTaskCommandRepository";
 import { FirestoreTaskCommandRepository } from "../../server/modules/tasks-command/data/firestoreTaskCommandRepository";
+import { getTaskCommandRepository } from "../../server/modules/tasks-command/data/taskCommandRepository";
+import { serverConfig } from "../../server/app/serverConfig";
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -44,9 +46,9 @@ export async function runTaskCommandTests(getApp: () => Promise<Express>) {
       assert(!!mod, "Mô-đun tasks-command phải được đăng ký.");
       assert(mod?.state === "disabled", "Mô-đun tasks-command mặc định phải ở trạng thái disabled.");
       console.log("   [PASSED] TC-G6-00-1: Mô-đun tasks-command đã được đăng ký ở trạng thái disabled mặc định.");
-    } catch (e: any) {
-      console.error("   ❌ TC-G6-00-1 Thất bại:", e.message);
-      throw e;
+    } catch (error: unknown) {
+      console.error("   ❌ TC-G6-00-1 Thất bại:", error instanceof Error ? error.message : String(error));
+      throw error;
     }
 
     // TC-G6-00-2: Gọi API khi module disabled trả MODULE_DISABLED (403)
@@ -61,9 +63,9 @@ export async function runTaskCommandTests(getApp: () => Promise<Express>) {
       assert(res.body.error?.code === "MODULE_DISABLED", "Mã lỗi phải là MODULE_DISABLED.");
       assert(typeof res.body.error?.requestId === "string", "Phải trả về requestId.");
       console.log("   [PASSED] TC-G6-00-2: API bị chặn chính xác với lỗi MODULE_DISABLED khi mô-đun bị tắt.");
-    } catch (e: any) {
-      console.error("   ❌ TC-G6-00-2 Thất bại:", e.message);
-      throw e;
+    } catch (error: unknown) {
+      console.error("   ❌ TC-G6-00-2 Thất bại:", error instanceof Error ? error.message : String(error));
+      throw error;
     }
 
     await stateRepo.set({
@@ -85,9 +87,9 @@ export async function runTaskCommandTests(getApp: () => Promise<Express>) {
       assert(!res.body.success, "Phản hồi thành công phải là false hoặc không có.");
       assert(res.body.error?.code === "PERMISSION_DENIED", "Mã lỗi phải là PERMISSION_DENIED.");
       console.log("   [PASSED] TC-G6-00-3: API trả về PERMISSION_DENIED chính xác đối với người dùng thiếu quyền hạn.");
-    } catch (e: any) {
-      console.error("   ❌ TC-G6-00-3 Thất bại:", e.message);
-      throw e;
+    } catch (error: unknown) {
+      console.error("   ❌ TC-G6-00-3 Thất bại:", error instanceof Error ? error.message : String(error));
+      throw error;
     }
 
     // TC-G6-00-4: Gửi dữ liệu không hợp lệ (sai schema) trả VALIDATION_FAILED (400)
@@ -104,14 +106,91 @@ export async function runTaskCommandTests(getApp: () => Promise<Express>) {
       assert(!res.body.success, "Phản hồi thành công phải là false hoặc không có.");
       assert(res.body.error?.code === "VALIDATION_FAILED", "Mã lỗi phải là VALIDATION_FAILED.");
       console.log("   [PASSED] TC-G6-00-4: Giao dịch bị chặn chính xác khi dữ liệu đầu vào không hợp lệ hoặc chứa các trường lạ.");
-    } catch (e: any) {
-      console.error("   ❌ TC-G6-00-4 Thất bại:", e.message);
-      throw e;
+    } catch (error: unknown) {
+      console.error("   ❌ TC-G6-00-4 Thất bại:", error instanceof Error ? error.message : String(error));
+      throw error;
     }
 
     // TC-G6-00-5: Chạy với in-memory repository thành công, kiểm tra dueAt và RLS
     try {
       resetMockTasksStore([]);
+      setTaskCommandRepository(new InMemoryTaskCommandRepository());
+
+      // Test Create bypass assigning
+      const createResFail = await request(app)
+        .post("/api/modules/tasks-command/tasks")
+        .set("Authorization", "Bearer mock-operator:uid:dept1")
+        .send({
+          title: "Báo cáo công việc G6",
+          departmentId: "dept2" // not their dept
+        })
+        .expect(403);
+      assert(createResFail.body.error.code === "PERMISSION_DENIED", "Operator không được gán department khác");
+
+      const createResFailManager = await request(app)
+        .post("/api/modules/tasks-command/tasks")
+        .set("Authorization", "Bearer mock-manager:uid:dept1")
+        .send({
+          title: "Báo cáo công việc G6"
+        })
+        .expect(403);
+      assert(createResFailManager.body.error.code === "PERMISSION_DENIED", "Manager bắt buộc có departmentId hợp lệ");
+
+      const createResManager = await request(app)
+        .post("/api/modules/tasks-command/tasks")
+        .set("Authorization", "Bearer mock-manager:uid:dept1")
+        .send({
+          title: "Báo cáo công việc G6",
+          departmentId: "dept1"
+        })
+        .expect(201);
+      assert(createResManager.body.success, "Manager tạo được task trong department của mình");
+      const mTaskId = createResManager.body.data.task.id;
+
+      // Other manager cannot access
+      const manager403 = await request(app)
+        .patch(`/api/modules/tasks-command/tasks/${mTaskId}`)
+        .set("Authorization", "Bearer mock-manager:uid2:dept2")
+        .send({ title: "Hack", expectedVersion: 1 })
+        .expect(403);
+      assert(manager403.body.error.code === "PERMISSION_DENIED", "Manager không có quyền sửa task ngoài department");
+
+      // Patch no-op
+      const patchNoOp = await request(app)
+        .patch(`/api/modules/tasks-command/tasks/${mTaskId}`)
+        .set("Authorization", "Bearer mock-admin")
+        .send({ expectedVersion: 1 })
+        .expect(400);
+      assert(patchNoOp.body.error.code === "VALIDATION_FAILED", "PATCH rỗng bị từ chối");
+
+      // Assign omitted
+      const assignOmitted = await request(app)
+        .put(`/api/modules/tasks-command/tasks/${mTaskId}/assignee`)
+        .set("Authorization", "Bearer mock-admin")
+        .send({ expectedVersion: 1 })
+        .expect(400);
+      
+      const assignNull = await request(app)
+        .put(`/api/modules/tasks-command/tasks/${mTaskId}/assignee`)
+        .set("Authorization", "Bearer mock-admin")
+        .send({ assigneeUid: null, expectedVersion: 1 })
+        .expect(200);
+      assert(assignNull.body.data.task.assignee === null, "Assignee null unassigns task");
+
+      const assignOp = await request(app)
+        .put(`/api/modules/tasks-command/tasks/${mTaskId}/assignee`)
+        .set("Authorization", "Bearer mock-admin")
+        .send({ assigneeUid: "uid-op", expectedVersion: 2 })
+        .expect(200);
+      
+      const updateByAssignee = await request(app)
+        .patch(`/api/modules/tasks-command/tasks/${mTaskId}`)
+        .set("Authorization", "Bearer mock-operator:uid-op")
+        .send({ title: "Updated by assignee", expectedVersion: 3 })
+        .expect(200);
+      assert(updateByAssignee.body.success, "Assignee có thể update task");
+
+      
       setTaskCommandRepository(new InMemoryTaskCommandRepository());
 
       // 1. Create task with dueAt
@@ -206,30 +285,64 @@ export async function runTaskCommandTests(getApp: () => Promise<Express>) {
         .expect(200);
 
       console.log("   [PASSED] TC-G6-00-5: Kiểm soát ghi/sửa/phân công/OCC in-memory, dueAt và RLS thành công.");
-    } catch (e: any) {
-      console.error("   ❌ TC-G6-00-5 Thất bại:", e.message);
-      throw e;
+    } catch (error: unknown) {
+      console.error("   ❌ TC-G6-00-5 Thất bại:", error instanceof Error ? error.message : String(error));
+      throw error;
     }
 
-    // TC-G6-00-6: Gọi Firestore repository trả NOT_IMPLEMENTED (501)
+    // Test config fail closed
+    try {
+      
+      
+      const oldEnv = serverConfig.nodeEnv;
+      const oldSource = process.env.TASKS_COMMAND_SOURCE;
+      
+      resetTaskCommandRepository();
+      
+      // Simulate production & in-memory -> error
+      serverConfig.nodeEnv = "production";
+      process.env.TASKS_COMMAND_SOURCE = "in-memory";
+      let configError = false;
+      try {
+        getTaskCommandRepository();
+      } catch (e: unknown) {
+        configError = true;
+      }
+      assert(configError, "Phải ném lỗi khi cố bật in-memory trong production");
+
+      // Simulate production & default -> firestore
+      resetTaskCommandRepository();
+      delete process.env.TASKS_COMMAND_SOURCE;
+      const repoProd = getTaskCommandRepository();
+      assert(repoProd.constructor.name === "FirestoreTaskCommandRepository", "Production mặc định phải là Firestore");
+
+      serverConfig.nodeEnv = oldEnv;
+      process.env.TASKS_COMMAND_SOURCE = oldSource;
+      resetTaskCommandRepository();
+      console.log("   [PASSED] TC-G6-00-Config: Chặn in-memory trên production thành công.");
+    } catch (error: unknown) {
+      console.error("   ❌ TC-G6-00-Config Thất bại:", error instanceof Error ? error.message : String(error));
+      throw error;
+    }
+
+        // TC-G6-00-6: Gọi Firestore repository để tạo công việc
     try {
       setTaskCommandRepository(new FirestoreTaskCommandRepository());
-
       const res = await request(app)
         .post("/api/modules/tasks-command/tasks")
         .set("Authorization", "Bearer mock-admin")
         .send({
-          title: "Sử dụng Firestore"
+          title: "Sử dụng Firestore",
+          departmentId: "dept-1"
         })
-        .expect(501);
-
-      assert(!res.body.success, "Phản hồi thành công phải là false hoặc không có.");
-      assert(res.body.error?.code === "NOT_IMPLEMENTED", "Mã lỗi phải là NOT_IMPLEMENTED.");
-      assert(typeof res.body.error?.requestId === "string", "Phải trả về requestId.");
-      console.log("   [PASSED] TC-G6-00-6: Firestore command repository skeleton trả NOT_IMPLEMENTED chuẩn xác.");
-    } catch (e: any) {
-      console.error("   ❌ TC-G6-00-6 Thất bại:", e.message);
-      throw e;
+        .expect(201);
+      
+      assert(res.body.success, "Phản hồi phải thành công.");
+      assert(res.body.data.task.title === "Sử dụng Firestore", "Tiêu đề không khớp.");
+      console.log("   [PASSED] TC-G6-01-1: Tạo công việc thành công trên Firestore repository.");
+    } catch (error: unknown) {
+      console.error("   ❌ TC-G6-01-1 Thất bại:", error instanceof Error ? error.message : String(error));
+      throw error;
     }
 
   } finally {

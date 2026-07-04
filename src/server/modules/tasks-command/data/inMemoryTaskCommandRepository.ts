@@ -51,9 +51,17 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
     const taskId = `task-mock-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     const nowIso = new Date().toISOString();
     
-    if (context.actorRole === "manager" && input.departmentId) {
-      if (!context.departmentIds.includes(input.departmentId)) {
-        throw new AppError("PERMISSION_DENIED", "Bạn không có quyền tạo công việc cho phòng ban này.");
+    if (!(context.actorRole === "admin" || context.permissions.includes("tasks.manage"))) {
+      if (context.actorRole === "manager") {
+        if (!input.departmentId || !context.departmentIds.includes(input.departmentId)) {
+          throw new AppError("PERMISSION_DENIED", "Quản lý phòng ban phải cung cấp mã phòng ban hợp lệ khi tạo công việc.", context.requestId);
+        }
+      } else if (context.actorRole === "operator" || context.actorRole === "editor") {
+        if (input.departmentId && !context.departmentIds.includes(input.departmentId)) {
+          throw new AppError("PERMISSION_DENIED", "Bạn không có quyền gán công việc cho phòng ban này.", context.requestId);
+        }
+      } else {
+        throw new AppError("PERMISSION_DENIED", "Tài khoản không đủ quyền hạn tạo công việc.", context.requestId);
       }
     }
 
@@ -68,10 +76,7 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
         uid: context.actorUid,
         displayName: `User ${context.actorUid}`
       },
-      assignee: input.assigneeUid ? {
-        uid: input.assigneeUid,
-        displayName: `User ${input.assigneeUid}`
-      } : null,
+      assignee: null,
       dueAt: input.dueAt,
       createdAt: nowIso,
       updatedAt: nowIso,

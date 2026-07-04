@@ -35,6 +35,7 @@ export class AppError extends Error {
       case "NOT_IMPLEMENTED":
         return 501;
       case "INTERNAL_ERROR":
+      case "CONFIGURATION_ERROR":
       default:
         return 500;
     }

@@ -1,7 +1,7 @@
 import { TaskStatus, TaskPriority } from "../../../../shared/contracts/tasks/taskContracts";
 import { UserRole, Permission } from "../../../../shared/permissions/permissions";
 
-export type TaskTransition = "start" | "block" | "complete" | "cancel" | "reopen";
+export type TaskTransition = "start" | "complete" | "reopen";
 
 export interface UserReference {
   uid: string;
@@ -37,7 +37,6 @@ export interface CreateTaskCommand {
   description?: string | null;
   priority?: TaskPriority | null;
   departmentId?: string | null;
-  assigneeUid?: string | null;
   dueAt?: string | null;
 }
 
@@ -50,7 +49,7 @@ export interface UpdateTaskCommand {
 }
 
 export interface AssignTaskCommand {
-  assigneeUid?: string | null;
+  assigneeUid: string | null;
   expectedVersion: number;
 }
 
@@ -70,7 +69,6 @@ export interface TaskCommandRepository {
       description: string | null;
       priority: TaskPriority | null;
       departmentId: string | null;
-      assigneeUid: string | null;
       dueAt: string | null;
     },
     context: TaskCommandContext

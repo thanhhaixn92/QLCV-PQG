@@ -19,7 +19,6 @@ export const taskCommandService = {
         description: command.description ?? null,
         priority: command.priority ?? null,
         departmentId: command.departmentId ?? null,
-        assigneeUid: command.assigneeUid ?? null,
         dueAt: command.dueAt ?? null
       }, context);
 

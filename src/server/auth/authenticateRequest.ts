@@ -52,13 +52,19 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
         );
       }
 
-      const rawPart = token.substring(5); // mock-admin, mock-viewer, vv. hoặc mock-operator:admin-uid-h1
-      const colonIndex = rawPart.indexOf(":");
-      const rolePart = colonIndex !== -1 ? rawPart.substring(0, colonIndex) : rawPart;
-      const customUid = colonIndex !== -1 ? rawPart.substring(colonIndex + 1) : undefined;
+      const rawPart = token.substring(5); // mock-role[:uid][:dept1,dept2]
+      const parts = rawPart.split(":");
+      const rolePart = parts[0];
+      const customUid = parts.length > 1 && parts[1] ? parts[1] : undefined;
+      const deptPart = parts.length > 2 && parts[2] ? parts[2] : undefined;
 
       const validRoles = ["admin", "manager", "editor", "operator", "viewer"];
       const role = validRoles.includes(rolePart) ? rolePart : "viewer";
+
+      let departmentIds: readonly string[] = [];
+      if (deptPart) {
+        departmentIds = Array.from(new Set(deptPart.split(",").map(d => d.trim()).filter(Boolean)));
+      }
 
       req.user = {
         uid: customUid || `mock-uid-${role}`,
@@ -66,6 +72,7 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
         emailVerified: true,
         role: role as UserRole,
         displayName: `Mock ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+        departmentIds,
         isMock: true,
       };
       return next();
@@ -78,12 +85,25 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
       // Ánh xạ vai trò người dùng (user role resolver)
       const role = resolveUserRole(decodedToken, req.requestId);
 
+      let departmentIds: readonly string[] = [];
+      if (Array.isArray(decodedToken.departmentIds)) {
+        departmentIds = Array.from(
+          new Set(
+            decodedToken.departmentIds
+              .filter(d => typeof d === "string")
+              .map(d => (d as string).trim())
+              .filter(Boolean)
+          )
+        );
+      }
+
       req.user = {
         uid: decodedToken.uid,
         email: decodedToken.email || null,
         emailVerified: decodedToken.email_verified || false,
         role,
         displayName: decodedToken.name || undefined,
+        departmentIds,
         isMock: false,
       };
       
