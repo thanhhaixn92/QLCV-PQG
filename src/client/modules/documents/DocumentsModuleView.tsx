@@ -4,7 +4,7 @@ import { tokenService } from "../../infrastructure/firebase/tokenService";
 import { LoadingState } from "../../components/LoadingState";
 import { ErrorState } from "../../components/ErrorState";
 import { 
-  Folder, File, FileText, Upload, Plus, Trash2, Download, Search, 
+  Folder, File as FileIcon, FileText, Upload, Plus, Trash2, Download, Search, 
   History, ArrowLeft, RefreshCw, X, Check, Save, Link2, Eye, EyeOff, FileCode
 } from "lucide-react";
 
@@ -189,7 +189,7 @@ export function DocumentsModuleView() {
   };
 
   // Upload File
-  const uploadFile = async (file: File, docIdToUpdate?: string) => {
+  const uploadFile = async (file: globalThis.File, docIdToUpdate?: string) => {
     // Client-side validations
     const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
     const blockedExts = [".exe", ".bat", ".sh", ".js", ".vbs", ".cmd", ".com", ".scr", ".msi"];
@@ -309,7 +309,7 @@ export function DocumentsModuleView() {
 
     try {
       const contentBlob = new Blob([editorContent], { type: "text/markdown" });
-      const mdFile = new File([contentBlob], editorTitle.trim(), { type: "text/markdown" });
+      const mdFile = new globalThis.File([contentBlob], editorTitle.trim(), { type: "text/markdown" });
       await uploadFile(mdFile);
       setShowEditor(false);
     } catch (err: any) {

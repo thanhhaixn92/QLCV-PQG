@@ -60,7 +60,9 @@ export class ModuleErrorBoundary extends React.Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      const isProduction = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
+      const isProduction = 
+        (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD) ||
+        (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "production");
       const correlationId = this.state.correlationId || "ERR-MOD-UNKNOWN";
 
       return (

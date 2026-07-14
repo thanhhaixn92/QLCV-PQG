@@ -68,6 +68,104 @@ async function runAllTests() {
   assert(boundaryInstance.state.error === null, "ComponentDidUpdate phải xóa bỏ lỗi cũ khi chuyển moduleId");
   assert(boundaryInstance.state.correlationId === null, "ComponentDidUpdate phải xóa bỏ correlationId cũ khi chuyển moduleId");
 
+  console.log("\n- Tích hợp thực tế và cô lập render của Error Boundary (React rendering):");
+  try {
+    const React = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { AppShell } = await import("../client/shell/AppShell");
+
+    const renderingError = new Error("Sự cố giả lập khi kết xuất đồ họa React");
+
+    // 1. Kiểm thử componentDidCatch log lỗi dạng structured
+    const testBoundary = new ModuleErrorBoundary({ moduleId: "documents", children: null });
+    let loggedStructuredError: any = false;
+    const originalConsoleError = console.error;
+    console.error = (msg: string, details: string) => {
+      if (msg.includes("[ModuleErrorBoundary]") && details.includes("MODULE_RENDER_ERROR")) {
+        loggedStructuredError = true;
+      }
+    };
+    testBoundary.componentDidCatch(renderingError, { componentStack: "  at DocumentsModuleView\n  at ModuleErrorBoundary" });
+    console.error = originalConsoleError;
+    assert(loggedStructuredError === true, "componentDidCatch phải log thông tin structured error đầy đủ");
+
+    // Helper để sinh markup cho ModuleErrorBoundary với state cụ thể
+    const renderBoundaryWithState = (state: any, isProd: boolean) => {
+      const inst = new ModuleErrorBoundary({ moduleId: "documents", children: "Nội dung" });
+      inst.state = state;
+      const originalEnv = process.env.NODE_ENV;
+      if (isProd) {
+        process.env.NODE_ENV = "production";
+      } else {
+        process.env.NODE_ENV = "development";
+      }
+      try {
+        return renderToStaticMarkup(inst.render() as React.ReactElement);
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
+    };
+
+    // 2. Chế độ development: hiển thị đầy đủ chi tiết lỗi, correlation ID, moduleId, nút retry
+    const devState = { hasError: true, error: renderingError, correlationId: "ERR-MOD-DEV123" };
+    const htmlDev = renderBoundaryWithState(devState, false);
+
+    assert(htmlDev.includes("Lỗi cô lập mô-đun:"), "Boundary phải hiển thị thông báo lỗi cô lập");
+    assert(htmlDev.includes("documents"), "Boundary phải hiển thị đúng moduleId bị lỗi");
+    assert(htmlDev.includes("ERR-MOD-DEV123"), "Boundary phải hiển thị mã sự cố (Correlation ID)");
+    assert(htmlDev.includes("Chi tiết lỗi"), "Chế độ development phải hiển thị chi tiết lỗi");
+    assert(htmlDev.includes("Sự cố giả lập khi kết xuất đồ họa React"), "Chế độ development phải hiển thị message của lỗi");
+    assert(htmlDev.includes("Tải lại Mô-đun"), "Boundary phải có nút 'Tải lại Mô-đun'");
+    assert(htmlDev.includes("Tải lại toàn trang"), "Boundary phải có nút 'Tải lại toàn trang'");
+
+    // 3. Chế độ production: ẩn hoàn toàn chi tiết lỗi để bảo mật
+    const prodState = { hasError: true, error: renderingError, correlationId: "ERR-MOD-PROD456" };
+    const htmlProd = renderBoundaryWithState(prodState, true);
+
+    assert(!htmlProd.includes("Chi tiết lỗi (Chỉ hiển thị ở chế độ phát triển):"), "Chế độ production KHÔNG được tiết lộ thông tin chi tiết lỗi");
+    assert(!htmlProd.includes("Sự cố giả lập khi kết xuất đồ họa React"), "Chế độ production không được chứa message lỗi thô");
+
+    // 4. Kiểm thử nút retry (handleReset)
+    let resetStateCalled: any = false;
+    testBoundary.setState = function(stateUpdate: any) {
+      const next = typeof stateUpdate === "function" ? stateUpdate(this.state) : stateUpdate;
+      this.state = { ...this.state, ...next };
+      if (this.state.hasError === false && this.state.error === null && this.state.correlationId === null) {
+        resetStateCalled = true;
+      }
+    };
+    (testBoundary as any).handleReset();
+    assert(resetStateCalled === true, "Hành động handleReset phải xóa bỏ toàn bộ trạng thái lỗi để phục hồi");
+
+    // 5. Kiểm thử tích hợp cùng App Shell: App Shell vẫn sống khỏe mạnh khi ModuleErrorBoundary bắt lỗi
+    const { MemoryRouter } = await import("react-router-dom");
+    const shellBoundaryElement = new ModuleErrorBoundary({ moduleId: "documents", children: "Không hiển thị" });
+    shellBoundaryElement.state = { hasError: true, error: renderingError, correlationId: "ERR-MOD-SHELL-INTEGRATION" };
+
+    const shellWithBoundaryErrorHtml = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        null,
+        React.createElement(
+          AppShell,
+          {
+            activeModules: { documents: true },
+            userRole: "admin",
+            onSetRole: () => {},
+            children: shellBoundaryElement.render() as React.ReactElement
+          }
+        )
+      )
+    );
+
+    assert(shellWithBoundaryErrorHtml.includes("QLCV_PQG Next Platform"), "App Shell Header vẫn phải tồn tại và hiển thị tiêu đề khi ModuleErrorBoundary bắt lỗi");
+    assert(shellWithBoundaryErrorHtml.includes("SANDBOX"), "App Shell Header vẫn phải hiển thị nhãn SANDBOX");
+    assert(shellWithBoundaryErrorHtml.includes("Lỗi cô lập mô-đun:"), "Phần nội dung chính của App Shell hiển thị đúng lỗi cô lập của module");
+    assert(shellWithBoundaryErrorHtml.includes("ERR-MOD-SHELL-INTEGRATION"), "App Shell hiển thị đúng mã Correlation ID");
+  } catch (error) {
+    assert(false, `Kiểm thử tích hợp Error Boundary thất bại: ${error}`);
+  }
+
   // Test Case: Zod Schema Validation
   console.log("\n- Xác thực Schema Module Manifest (Zod):");
   const validManifest = {
@@ -894,8 +992,11 @@ async function runAllTests() {
   // TC-G3-05: ModuleStateRepository factory - Trả về FirestoreModuleStateRepository khi đã cấu hình Firebase.
   try {
     const { getModuleStateRepository, getRepositoryPersistenceMode, resetRepositoryMode } = await import("../server/modules/state/moduleStateRepository");
+    const { setAdminStatusForTest, resetFirebaseAdminStatus } = await import("../server/infrastructure/firebase/firebaseAdmin");
     
     const savedProjectId = serverConfig.firebaseProjectId;
+    
+    setAdminStatusForTest("initialized");
     serverConfig.firebaseProjectId = "mock-project-g3"; // Cấu hình Project ID
     
     resetRepositoryMode();
@@ -906,6 +1007,7 @@ async function runAllTests() {
     // Restore
     serverConfig.firebaseProjectId = savedProjectId;
     resetRepositoryMode();
+    await resetFirebaseAdminStatus();
   } catch (error) {
     assert(false, `TC-G3-05 Thất bại: ${error}`);
   }
