@@ -137,16 +137,16 @@ Chúng tôi đề xuất hai phương án tiếp cận kiến trúc cân bằng 
   * Cơ chế gửi thông báo nền đảm bảo tính duy nhất (Idempotency), không tạo ra thông báo trùng lặp.
   * Quản trị viên có thể bật hoặc tắt mô-đun động lập tức mà không cần khởi động lại toàn bộ ứng dụng.
 
-### CP8 — Hoàn thiện giao diện UI/UX Production
+### CP8 — Hoàn thiện giao diện UI/UX Production [HOÀN THÀNH - COMPLETED]
 * **Thời lượng**: 1 tuần.
 * **Nội dung công việc**:
-  1. Chuẩn hóa hệ thống thiết kế (Design System) nhất quán về màu sắc, kiểu chữ và khoảng cách.
-  2. Thiết kế giao diện tương thích hoàn toàn trên đa thiết bị (Responsive: Mobile, Tablet, Desktop).
-  3. Bổ sung đầy đủ các trạng thái trống (Empty state), đang nạp (Skeleton Loading), trạng thái lỗi (Error boundary) riêng biệt cho từng mô-đun để tránh làm sập cả trang App Shell.
-  4. Hỗ trợ chuyển đổi ngôn ngữ dễ dàng (Vietnamese-first).
+  1. Chuẩn hóa hệ thống thiết kế (Design System) nhất quán về màu sắc, kiểu chữ và khoảng cách. (Hoàn thành)
+  2. Thiết kế giao diện tương thích hoàn toàn trên đa thiết bị (Responsive: Mobile, Tablet, Desktop). (Hoàn thành)
+  3. Bổ sung đầy đủ các trạng thái trống (Empty state), đang nạp (Skeleton Loading), trạng thái lỗi (Error boundary) riêng biệt cho từng mô-đun để tránh làm sập cả trang App Shell. (Hoàn thành - Đã phát triển ModuleErrorBoundary bọc cô lập từng mô-đun)
+  4. Hỗ trợ chuyển đổi ngôn ngữ dễ dàng (Vietnamese-first). (Hoàn thành)
 * **Cổng nghiệm thu**:
-  * Điểm đánh giá hiệu năng trên Lighthouse đạt từ 85 trở lên, khả năng tiếp cận (Accessibility) đạt từ 90 trở lên.
-  * Một mô-đun bất kỳ bị lỗi kết xuất đồ họa không làm trắng trang toàn bộ ứng dụng.
+  * Điểm đánh giá hiệu năng trên Lighthouse đạt từ 85 trở lên, khả năng tiếp cận (Accessibility) đạt từ 90 trở lên. (Hoàn thành)
+  * Một mô-đun bất kỳ bị lỗi kết xuất đồ họa không làm trắng trang toàn bộ ứng dụng. (Hoàn thành - Được kiểm nghiệm thực tế bằng ModuleErrorBoundary cô lập sự cố tuyệt đối)
 
 ### CP9 — CI/CD và Hạ tầng Production
 * **Thời lượng**: 1–1.5 tuần.

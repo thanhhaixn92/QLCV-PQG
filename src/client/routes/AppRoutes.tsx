@@ -2,6 +2,7 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ModuleUnavailablePage } from "../shell/ModuleUnavailablePage";
 import { clientModuleRegistry } from "../infrastructure/modules/clientModuleRegistry";
+import { ModuleErrorBoundary } from "../components/ModuleErrorBoundary";
 
 interface AppRoutesProps {
   activeModules: Record<string, boolean>;
@@ -26,7 +27,9 @@ export function AppRoutes({ activeModules, dashboardElement }: AppRoutesProps) {
             path={route.path}
             element={
               isEnabled ? (
-                route.element
+                <ModuleErrorBoundary moduleId={id}>
+                  {route.element}
+                </ModuleErrorBoundary>
               ) : (
                 <ModuleUnavailablePage moduleId={id} />
               )

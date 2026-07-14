@@ -145,7 +145,7 @@ export function TasksQueryPlaceholder() {
   const handlePrevPage = () => {
     if (cursorHistory.length > 0) {
       const prevCursor = cursorHistory[cursorHistory.length - 1];
-      setCursorHistory(prev => prev.slice(0, prev-1));
+      setCursorHistory(prev => prev.slice(0, prev.length - 1));
       fetchTasks(prevCursor || null);
     }
   };
