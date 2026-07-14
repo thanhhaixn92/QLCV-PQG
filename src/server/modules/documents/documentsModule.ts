@@ -9,7 +9,7 @@ export const documentsManifest: AppModuleManifest = {
   routes: ["/documents"],
   requiredPermissions: ["documents.read"],
   dependencies: {
-    required: ["identity"],
+    required: ["identity-management"],
     optional: ["tasks-query"]
   },
   tools: [],

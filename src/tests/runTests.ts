@@ -47,6 +47,27 @@ async function runAllTests() {
 
   console.log("\n[KIỂM THỬ ĐƠN VỊ LÕI]");
 
+  // Test Case: Module Error Boundary Logic
+  console.log("\n- Logic Cô lập Lỗi Mô-đun (Module Error Boundary):");
+  const { ModuleErrorBoundary } = await import("../client/components/ModuleErrorBoundary");
+  
+  const err = new Error("Sự cố kết xuất đồ họa giả lập");
+  const derivedState = ModuleErrorBoundary.getDerivedStateFromError(err);
+  assert(derivedState.hasError === true, "getDerivedStateFromError phải thiết lập hasError = true");
+  assert(derivedState.error === err, "getDerivedStateFromError phải lưu trữ đúng đối tượng lỗi");
+  assert(typeof derivedState.correlationId === "string" && derivedState.correlationId.startsWith("ERR-MOD-"), "Phải tự động sinh mã sự cố có định dạng ERR-MOD-");
+
+  const boundaryInstance = new ModuleErrorBoundary({ moduleId: "module-a", children: null });
+  boundaryInstance.state = { hasError: true, error: err, correlationId: "ERR-MOD-TEST" };
+  boundaryInstance.setState = function(stateUpdate: any) {
+    this.state = { ...this.state, ...stateUpdate };
+  };
+  
+  boundaryInstance.componentDidUpdate({ moduleId: "module-b", children: null });
+  assert(boundaryInstance.state.hasError === false, "ComponentDidUpdate phải reset hasError = false khi chuyển moduleId");
+  assert(boundaryInstance.state.error === null, "ComponentDidUpdate phải xóa bỏ lỗi cũ khi chuyển moduleId");
+  assert(boundaryInstance.state.correlationId === null, "ComponentDidUpdate phải xóa bỏ correlationId cũ khi chuyển moduleId");
+
   // Test Case: Zod Schema Validation
   console.log("\n- Xác thực Schema Module Manifest (Zod):");
   const validManifest = {

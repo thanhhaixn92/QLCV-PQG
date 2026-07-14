@@ -309,7 +309,7 @@ export function DocumentsModuleView() {
 
     try {
       const contentBlob = new Blob([editorContent], { type: "text/markdown" });
-      const mdFile = new (File as any)([contentBlob], editorTitle.trim(), { type: "text/markdown" });
+      const mdFile = new File([contentBlob], editorTitle.trim(), { type: "text/markdown" });
       await uploadFile(mdFile);
       setShowEditor(false);
     } catch (err: any) {

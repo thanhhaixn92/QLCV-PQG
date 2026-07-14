@@ -16,6 +16,9 @@ export function registerAllModules() {
   }
 
   // Perform post-registration validation on the dependency graph
-  moduleRegistry.validateDependencies();
+  const validationResult = moduleRegistry.validateDependencies();
+  if (!validationResult.success) {
+    throw new Error(`Đăng ký mô-đun thất bại do lỗi phụ thuộc: ${validationResult.errors.join("; ")}`);
+  }
 }
 

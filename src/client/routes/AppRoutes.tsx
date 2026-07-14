@@ -11,7 +11,6 @@ interface AppRoutesProps {
 
 export function AppRoutes({ activeModules, dashboardElement }: AppRoutesProps) {
   const clientModules = clientModuleRegistry.getAllModules();
-  const RouteComp = Route as any;
 
   return (
     <Routes>
@@ -22,7 +21,7 @@ export function AppRoutes({ activeModules, dashboardElement }: AppRoutesProps) {
         const isEnabled = activeModules[id] === true;
 
         return mod.routes.map((route) => (
-          <RouteComp
+          <Route
             key={`${id}-${route.path}`}
             path={route.path}
             element={
