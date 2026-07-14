@@ -18,5 +18,7 @@ export interface TaskSummary {
   dueAt: string | null;
   updatedAt: string | null;
   createdAt: string | null;
+  version?: number;
+  archivedAt?: string | null;
   source: "firestore" | "fixture";
 }

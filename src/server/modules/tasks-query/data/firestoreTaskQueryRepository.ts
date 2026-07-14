@@ -58,7 +58,9 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
       "departmentId",
       "dueAt",
       "createdAt",
-      "updatedAt"
+      "updatedAt",
+      "version",
+      "archivedAt"
     );
 
     // Dynamic filtering array
@@ -233,6 +235,10 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
           lastProcessedDoc = doc;
           const mapped = taskDocumentMapper.map(doc.id, doc.data(), "firestore");
           if (mapped) {
+            if (mapped.archivedAt) {
+              // Skip archived tasks in in-memory filter to avoid requiring Firestore composite indexes
+              continue;
+            }
             items.push(mapped);
             if (items.length >= limit + 1) {
               break;

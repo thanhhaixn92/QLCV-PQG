@@ -49,7 +49,7 @@ export interface UpdateTaskCommand {
 }
 
 export interface AssignTaskCommand {
-  assigneeUid: string | null;
+  assigneeUid?: string | null;
   expectedVersion: number;
 }
 

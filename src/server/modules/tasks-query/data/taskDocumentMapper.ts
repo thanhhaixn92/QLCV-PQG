@@ -120,6 +120,8 @@ export const taskDocumentMapper = {
     const dueAt = parseTimestamp(docData.dueAt);
     const createdAt = parseTimestamp(docData.createdAt) || new Date().toISOString();
     const updatedAt = parseTimestamp(docData.updatedAt) || createdAt;
+    const archivedAt = docData.archivedAt ? parseTimestamp(docData.archivedAt) : null;
+    const version = typeof docData.version === "number" ? docData.version : undefined;
 
     const departmentId = docData.departmentId ? String(docData.departmentId) : null;
 
@@ -134,6 +136,8 @@ export const taskDocumentMapper = {
       dueAt,
       createdAt,
       updatedAt,
+      version,
+      archivedAt,
       source
     };
   }

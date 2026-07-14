@@ -131,6 +131,24 @@ export function registerCoreRoutes(router: Router) {
     }
   );
 
+  // Retrieve recent audit logs (Admin only)
+  router.get(
+    "/admin/audits",
+    authenticateRequest,
+    checkPermission("audit.read"),
+    async (req: AppRequest, res: Response, next: NextFunction) => {
+      try {
+        const logs = auditService.getRecentLogs();
+        res.json({
+          data: logs,
+          requestId: req.requestId
+        });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
   // Module state health check endpoint
   router.get(
     "/module-state/health",

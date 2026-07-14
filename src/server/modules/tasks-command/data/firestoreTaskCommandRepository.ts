@@ -3,6 +3,7 @@ import { AppError } from "../../../../shared/errors/appError";
 import { TaskPriority } from "../../../../shared/contracts/tasks/taskContracts";
 import { getConfiguredFirestore } from "../../../infrastructure/firebase/firebaseAdmin";
 import { v4 as uuidv4 } from "uuid";
+import { logger } from "../../../infrastructure/logging/logger";
 
 export class FirestoreTaskCommandRepository implements TaskCommandRepository {
   async create(
@@ -56,8 +57,8 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
       await db.collection("tasks").doc(taskId).set(task);
       return task;
     } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      throw new AppError("INTERNAL_ERROR", `Lỗi khi lưu công việc vào cơ sở dữ liệu: ${errMsg}`, context.requestId, error);
+      logger.error(`[FirestoreTaskCommandRepository] Lỗi khi tạo công việc ${taskId}:`, error, { requestId: context.requestId });
+      throw new AppError("INTERNAL_ERROR", "Đã xảy ra lỗi hệ thống khi lưu công việc.", context.requestId);
     }
   }
 
@@ -122,8 +123,8 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
       });
     } catch (error: unknown) {
       if (error instanceof AppError) throw error;
-      const errMsg = error instanceof Error ? error.message : String(error);
-      throw new AppError("INTERNAL_ERROR", `Lỗi khi cập nhật công việc trên cơ sở dữ liệu: ${errMsg}`, context.requestId, error);
+      logger.error(`[FirestoreTaskCommandRepository] Lỗi khi cập nhật công việc ${taskId}:`, error, { requestId: context.requestId });
+      throw new AppError("INTERNAL_ERROR", "Đã xảy ra lỗi hệ thống khi cập nhật công việc.", context.requestId);
     }
   }
 
@@ -200,8 +201,8 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
       });
     } catch (error: unknown) {
       if (error instanceof AppError) throw error;
-      const errMsg = error instanceof Error ? error.message : String(error);
-      throw new AppError("INTERNAL_ERROR", `Lỗi khi chuyển trạng thái trên cơ sở dữ liệu: ${errMsg}`, context.requestId, error);
+      logger.error(`[FirestoreTaskCommandRepository] Lỗi khi chuyển trạng thái công việc ${taskId}:`, error, { requestId: context.requestId });
+      throw new AppError("INTERNAL_ERROR", "Đã xảy ra lỗi hệ thống khi chuyển trạng thái.", context.requestId);
     }
   }
 
@@ -258,8 +259,8 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
       });
     } catch (error: unknown) {
       if (error instanceof AppError) throw error;
-      const errMsg = error instanceof Error ? error.message : String(error);
-      throw new AppError("INTERNAL_ERROR", `Lỗi khi phân công trên cơ sở dữ liệu: ${errMsg}`, context.requestId, error);
+      logger.error(`[FirestoreTaskCommandRepository] Lỗi khi phân công công việc ${taskId}:`, error, { requestId: context.requestId });
+      throw new AppError("INTERNAL_ERROR", "Đã xảy ra lỗi hệ thống khi phân công công việc.", context.requestId);
     }
   }
 
@@ -310,8 +311,8 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
       });
     } catch (error: unknown) {
       if (error instanceof AppError) throw error;
-      const errMsg = error instanceof Error ? error.message : String(error);
-      throw new AppError("INTERNAL_ERROR", `Lỗi khi lưu trữ trên cơ sở dữ liệu: ${errMsg}`, context.requestId, error);
+      logger.error(`[FirestoreTaskCommandRepository] Lỗi khi lưu trữ công việc ${taskId}:`, error, { requestId: context.requestId });
+      throw new AppError("INTERNAL_ERROR", "Đã xảy ra lỗi hệ thống khi lưu trữ công việc.", context.requestId);
     }
   }
 }

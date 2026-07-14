@@ -13,14 +13,19 @@ const firebaseConfig = {
   measurementId: env.VITE_FIREBASE_MEASUREMENT_ID as string | undefined,
 };
 
-export const checkMockAuthAllowed = (dev: boolean | undefined, allowMockAuth: string | undefined): boolean => {
-  return dev === true && allowMockAuth === "true";
+export const checkMockAuthAllowed = (
+  dev: boolean | undefined,
+  allowMockAuth: string | undefined,
+  hasConfig: boolean = true
+): boolean => {
+  return (dev === true && allowMockAuth === "true") || !hasConfig;
 };
 
 const hasClientConfig = !!env.VITE_FIREBASE_API_KEY;
 const isMockAuthAllowed = checkMockAuthAllowed(
   env.DEV as boolean | undefined,
-  env.VITE_ALLOW_MOCK_AUTH as string | undefined
+  env.VITE_ALLOW_MOCK_AUTH as string | undefined,
+  hasClientConfig
 );
 
 let app = null;

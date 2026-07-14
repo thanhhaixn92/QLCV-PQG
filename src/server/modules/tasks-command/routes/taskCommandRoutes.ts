@@ -106,7 +106,7 @@ export function registerTaskCommandRoutes(router: Router) {
         }
 
         const context = getCommandContext(req);
-        const result = await taskCommandService.assignTask(taskId, bodyParse.data as AssignTaskCommand, context);
+        const result = await taskCommandService.assignTask(taskId, bodyParse.data, context);
 
         res.json({
           success: true,

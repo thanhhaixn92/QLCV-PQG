@@ -47,7 +47,7 @@ export class AppError extends Error {
         code: this.code,
         message: this.message,
         requestId: this.requestId,
-        details: this.details,
+        ...(this.code === "VALIDATION_FAILED" && this.details ? { details: this.details } : {}),
       },
     };
   }

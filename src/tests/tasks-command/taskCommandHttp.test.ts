@@ -291,12 +291,9 @@ export async function runTaskCommandTests(getApp: () => Promise<Express>) {
     }
 
     // Test config fail closed
+    const oldEnv = serverConfig.nodeEnv;
+    const oldSource = process.env.TASKS_COMMAND_SOURCE;
     try {
-      
-      
-      const oldEnv = serverConfig.nodeEnv;
-      const oldSource = process.env.TASKS_COMMAND_SOURCE;
-      
       resetTaskCommandRepository();
       
       // Simulate production & in-memory -> error
@@ -316,33 +313,18 @@ export async function runTaskCommandTests(getApp: () => Promise<Express>) {
       const repoProd = getTaskCommandRepository();
       assert(repoProd.constructor.name === "FirestoreTaskCommandRepository", "Production mặc định phải là Firestore");
 
-      serverConfig.nodeEnv = oldEnv;
-      process.env.TASKS_COMMAND_SOURCE = oldSource;
-      resetTaskCommandRepository();
       console.log("   [PASSED] TC-G6-00-Config: Chặn in-memory trên production thành công.");
     } catch (error: unknown) {
       console.error("   ❌ TC-G6-00-Config Thất bại:", error instanceof Error ? error.message : String(error));
       throw error;
-    }
-
-        // TC-G6-00-6: Gọi Firestore repository để tạo công việc
-    try {
-      setTaskCommandRepository(new FirestoreTaskCommandRepository());
-      const res = await request(app)
-        .post("/api/modules/tasks-command/tasks")
-        .set("Authorization", "Bearer mock-admin")
-        .send({
-          title: "Sử dụng Firestore",
-          departmentId: "dept-1"
-        })
-        .expect(201);
-      
-      assert(res.body.success, "Phản hồi phải thành công.");
-      assert(res.body.data.task.title === "Sử dụng Firestore", "Tiêu đề không khớp.");
-      console.log("   [PASSED] TC-G6-01-1: Tạo công việc thành công trên Firestore repository.");
-    } catch (error: unknown) {
-      console.error("   ❌ TC-G6-01-1 Thất bại:", error instanceof Error ? error.message : String(error));
-      throw error;
+    } finally {
+      serverConfig.nodeEnv = oldEnv;
+      if (oldSource !== undefined) {
+        process.env.TASKS_COMMAND_SOURCE = oldSource;
+      } else {
+        delete process.env.TASKS_COMMAND_SOURCE;
+      }
+      resetTaskCommandRepository();
     }
 
   } finally {

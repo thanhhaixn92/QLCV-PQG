@@ -23,14 +23,43 @@ let currentMockUser: ClientUser | null = null;
 // Khởi tạo mock user từ localStorage chỉ khi mock auth được phép
 if (isMockAuthAllowed) {
   if (typeof localStorage !== "undefined") {
-    const storedUser = localStorage.getItem("qlcv_mock_user");
-    if (storedUser) {
+    let storedUser = localStorage.getItem("qlcv_mock_user");
+    if (!storedUser) {
+      const defaultUser: ClientUser = {
+        uid: "mock-uid-admin",
+        email: "admin@qlcv.local",
+        displayName: "Mock Admin",
+        emailVerified: true,
+        isMock: true,
+        role: "admin",
+      };
+      localStorage.setItem("qlcv_mock_user", JSON.stringify(defaultUser));
+      currentMockUser = defaultUser;
+    } else {
       try {
         currentMockUser = JSON.parse(storedUser);
       } catch {
         currentMockUser = null;
       }
     }
+  }
+
+  // Lắng nghe sự kiện storage để đồng bộ hóa vai trò lập tức
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", () => {
+      const stored = localStorage.getItem("qlcv_mock_user");
+      if (stored) {
+        try {
+          currentMockUser = JSON.parse(stored);
+          mockListeners.forEach(cb => cb(currentMockUser));
+        } catch {
+          // ignore
+        }
+      } else {
+        currentMockUser = null;
+        mockListeners.forEach(cb => cb(null));
+      }
+    });
   }
 } else {
   // Đảm bảo không còn dữ liệu mock trong localStorage nếu mock không được phép
@@ -134,8 +163,24 @@ export const onAuthChanged = (callback: AuthCallback): (() => void) => {
 export const getClientAuthToken = async (): Promise<string | null> => {
   if (hasClientConfig && firebaseAuth && firebaseAuth.currentUser) {
     return await firebaseAuth.currentUser.getIdToken(true);
-  } else if (isMockAuthAllowed && currentMockUser) {
-    return `mock-${currentMockUser.role}`;
+  } else if (isMockAuthAllowed) {
+    if (currentMockUser) {
+      return `mock-${currentMockUser.role}`;
+    }
+    if (typeof localStorage !== "undefined") {
+      const stored = localStorage.getItem("qlcv_mock_user");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.role) {
+            return `mock-${parsed.role}`;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+    return "mock-admin";
   }
   return null;
 };
