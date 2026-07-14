@@ -19,6 +19,8 @@ export const taskCommandService = {
         description: command.description ?? null,
         priority: command.priority ?? null,
         departmentId: command.departmentId ?? null,
+        collaboratorIds: command.collaboratorIds,
+        attachments: command.attachments,
         dueAt: command.dueAt ?? null
       }, context);
 
@@ -54,6 +56,8 @@ export const taskCommandService = {
         title: command.title,
         description: command.description,
         priority: command.priority,
+        collaboratorIds: command.collaboratorIds,
+        attachments: command.attachments,
         dueAt: command.dueAt
       }, command.expectedVersion, context);
 

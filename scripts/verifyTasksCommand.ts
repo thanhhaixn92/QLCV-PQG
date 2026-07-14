@@ -4,7 +4,7 @@ process.env.TASKS_COMMAND_SOURCE = "firestore"; // Ensure live verification uses
 import { taskCommandService } from "../src/server/modules/tasks-command/services/taskCommandService";
 import { TaskCommandContext } from "../src/server/modules/tasks-command/contracts/taskCommandTypes";
 import { getConfiguredFirestore } from "../src/server/infrastructure/firebase/firebaseAdmin";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 
 async function verify() {
   console.log("Starting Live Firestore Verification for Tasks Command");
@@ -15,7 +15,7 @@ async function verify() {
     actorRole: "admin",
     permissions: ["tasks.manage"],
     departmentIds: ["verify-dept"],
-    requestId: `verify-${uuidv4()}`
+    requestId: `verify-${crypto.randomUUID()}`
   };
 
   const markerTitle = `Live Verification Task ${new Date().toISOString()}`;

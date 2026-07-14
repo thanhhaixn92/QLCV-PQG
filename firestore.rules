@@ -1,8 +1,119 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Global Safety Net: Từ chối tất cả mặc định
     match /{document=**} {
       allow read, write: if false;
+    }
+
+    // Tiền tố / Trợ giúp tiện ích toàn cục
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Xác định quyền quản trị viên qua Custom Claim hoặc kiểm tra bộ sưu tập
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.role == 'admin' ||
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // Helper cho dữ liệu đầu vào và hiện tại
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 1. Quy tắc cho USERS
+    match /users/{userId} {
+      allow get: if isVerifiedUser() && (request.auth.uid == userId || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.uid == request.auth.uid || isAdmin());
+      
+      allow create: if isVerifiedUser() && isValidId(userId) && (request.auth.uid == userId || isAdmin()) &&
+        incoming().uid == userId &&
+        incoming().email is string &&
+        incoming().role is string &&
+        incoming().role in ['admin', 'manager', 'editor', 'operator', 'viewer'] &&
+        // Ngăn chặn tự nâng quyền trừ phi là admin thực hiện
+        (incoming().role == 'viewer' || isAdmin()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() && isValidId(userId) && (request.auth.uid == userId || isAdmin()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().email == existing().email &&
+        // Chỉ admin hoặc chính mình cập nhật displayName
+        (
+          isAdmin() || (
+            incoming().role == existing().role &&
+            (incoming().departmentIds == existing().departmentIds || (!incoming().keys().hasAll(['departmentIds']) && !existing().keys().hasAll(['departmentIds']))) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // 2. Quy tắc cho DEPARTMENTS
+    match /departments/{departmentId} {
+      allow read: if isVerifiedUser();
+      allow create, update, delete: if isAdmin() && isValidId(departmentId);
+    }
+
+    // 3. Quy tắc cho SYSTEM ROLES
+    match /system_roles/{roleId} {
+      allow read: if isVerifiedUser();
+      allow create, update, delete: if isAdmin() && isValidId(roleId);
+    }
+
+    // 4. Quy tắc cho SYSTEM MODULE STATES
+    match /system_module_states/{moduleId} {
+      allow read: if isVerifiedUser();
+      allow create, update: if isAdmin() && isValidId(moduleId);
+      allow delete: if isAdmin();
+    }
+
+    // 5. Quy tắc cho AUDIT LOGS (Append-only)
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isValidId(logId) &&
+        incoming().id == logId;
+      allow update, delete: if false;
+    }
+
+    // 6. Quy tắc cho SYSTEM MIGRATIONS & LOCKS
+    match /system_migrations/{version} {
+      allow read, write: if isAdmin() && isValidId(version);
+    }
+
+    match /system_migration_lock/{lockId} {
+      allow read, write: if isAdmin() && isValidId(lockId);
+    }
+
+    // 7. Quy tắc cho DOCUMENTS (Tài liệu)
+    match /documents/{documentId} {
+      allow read, write: if isVerifiedUser() && isValidId(documentId);
+    }
+
+    // 8. Quy tắc cho FOLDERS (Thư mục)
+    match /folders/{folderId} {
+      allow read, write: if isVerifiedUser() && isValidId(folderId);
     }
   }
 }

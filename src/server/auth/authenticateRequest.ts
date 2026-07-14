@@ -42,6 +42,14 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
 
     // 1. Kiểm tra nếu là mock token
     if (token.startsWith("mock-")) {
+      if (serverConfig.nodeEnv === "production" || !serverConfig.allowMockAuth) {
+        throw new AppError(
+          "AUTH_REQUIRED",
+          "Môi trường này yêu cầu xác thực bằng tài khoản thực, không chấp nhận tài khoản giả lập.",
+          req.requestId
+        );
+      }
+
       const rawPart = token.substring(5); // mock-role[:uid][:dept1,dept2]
       const parts = rawPart.split(":");
       const rolePart = parts[0];

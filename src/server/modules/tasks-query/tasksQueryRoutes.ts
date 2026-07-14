@@ -58,4 +58,41 @@ export function registerTasksQueryRoutes(router: Router) {
       }
     }
   );
+
+  // GET /api/modules/tasks-query/tasks/:id/history
+  router.get(
+    "/modules/tasks-query/tasks/:id/history",
+    authenticateRequest,
+    checkPermission("tasks.read"),
+    requireModuleEnabled("tasks-query"),
+    async (req: AppRequest, res: Response, next: NextFunction) => {
+      try {
+        const taskId = req.params.id;
+        if (!taskId || !taskId.trim()) {
+          throw new AppError("VALIDATION_FAILED", "Mã công việc không hợp lệ.");
+        }
+
+        // First check if user can access the task
+        const task = await tasksQueryService.getTaskById(taskId, req);
+        if (!task) {
+          throw new AppError(
+            "PERMISSION_DENIED",
+            "Công việc không tồn tại hoặc bạn không có quyền truy cập."
+          );
+        }
+
+        // Dynamically import auditService to avoid coupling if not needed
+        const { auditService } = await import("../../audit/auditService");
+        const history = await auditService.getLogsByTargetId(taskId, 50);
+
+        res.json({
+          success: true,
+          data: history,
+          requestId: req.requestId
+        });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
 }

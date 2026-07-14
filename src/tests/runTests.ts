@@ -97,6 +97,7 @@ async function runAllTests() {
   // Register mock queryTasksTool for checking permissions isolation
   toolRegistry.registerTool({
     name: "queryTasksTool",
+    description: "Mock tool for query tasks test",
     moduleId: "tasks-query",
     risk: "read",
     requiredPermissions: ["tasks.read"],
@@ -589,7 +590,7 @@ async function runAllTests() {
 
   // TC-HARD-03: Client mock auth không bật khi VITE_ALLOW_MOCK_AUTH=false.
   try {
-    const { isMockAuthAllowed, checkMockAuthAllowed } = await import("../client/infrastructure/firebase/firebaseClient");
+    const { isMockAuthAllowed, checkMockAuthAllowed, hasClientConfig } = await import("../client/infrastructure/firebase/firebaseClient");
     
     const tcMock01 = checkMockAuthAllowed(true, "true");
     assert(tcMock01 === true, "TC-MOCK-01: DEV=true và VITE_ALLOW_MOCK_AUTH=true phải kích hoạt mock auth.");
@@ -610,7 +611,8 @@ async function runAllTests() {
     const testMetaEnv = ((typeof import.meta !== "undefined" && import.meta.env) || {}) as any;
     const actualExpected = checkMockAuthAllowed(
       testMetaEnv.DEV as boolean | undefined,
-      testMetaEnv.VITE_ALLOW_MOCK_AUTH as string | undefined
+      testMetaEnv.VITE_ALLOW_MOCK_AUTH as string | undefined,
+      hasClientConfig
     );
     assert(
       isMockAuthAllowed === actualExpected,
@@ -2374,6 +2376,15 @@ async function runAllTests() {
     await runTaskCommandTests(getCleanApp);
   } catch (error) {
     console.error("❌ G6.0 Tests Thất bại:", error);
+    failed = true;
+  }
+
+  // --- MILESTONE G6.6 (CP6) GEMINI AGENT TESTS ---
+  try {
+    const { runGeminiAgentTests } = await import("./gemini-agent/geminiAgent.test");
+    await runGeminiAgentTests(getCleanApp);
+  } catch (error) {
+    console.error("❌ CP6 Gemini Agent Tests Thất bại:", error);
     failed = true;
   }
 

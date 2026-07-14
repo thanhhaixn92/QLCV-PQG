@@ -48,18 +48,74 @@ class ModuleRegistryClass {
     const warnings: string[] = [];
     const errors: string[] = [];
 
+    // 1. Kiểm tra các dependency bắt buộc bị thiếu
     for (const mod of this.modules.values()) {
       for (const reqDep of mod.manifest.dependencies.required) {
         if (!this.modules.has(reqDep)) {
-          const warnMsg = `Mô-đun '${mod.manifest.id}' yêu cầu dependency bắt buộc '${reqDep}' nhưng hiện chưa được đăng ký trong hệ thống.`;
+          const errMsg = `Mô-đun '${mod.manifest.id}' yêu cầu dependency bắt buộc '${reqDep}' nhưng hiện chưa được đăng ký trong hệ thống.`;
+          logger.error(`ModuleRegistry: ${errMsg}`);
+          errors.push(errMsg);
+          warnings.push(errMsg);
+        }
+      }
+      for (const optDep of mod.manifest.dependencies.optional) {
+        if (!this.modules.has(optDep)) {
+          const warnMsg = `Mô-đun '${mod.manifest.id}' yêu cầu dependency tùy chọn '${optDep}' nhưng hiện chưa được đăng ký trong hệ thống.`;
           logger.warn(`ModuleRegistry: ${warnMsg}`);
           warnings.push(warnMsg);
         }
       }
     }
 
+    // 2. Phát hiện lỗi phụ thuộc vòng tròn (Circular Dependency) bằng DFS
+    const stateMap = new Map<string, number>(); // 0: unvisited, 1: visiting, 2: visited
+    const parentMap = new Map<string, string>();
+
+    const dfs = (moduleId: string): boolean => {
+      stateMap.set(moduleId, 1); // Đang duyệt (visiting)
+
+      const mod = this.modules.get(moduleId);
+      if (mod) {
+        const deps = [...mod.manifest.dependencies.required, ...mod.manifest.dependencies.optional];
+        for (const dep of deps) {
+          if (!this.modules.has(dep)) continue; // Bỏ qua dependency thiếu (đã báo ở trên)
+
+          const depState = stateMap.get(dep) || 0;
+          if (depState === 1) {
+            // Phát hiện chu kỳ! Tạo chuỗi đường dẫn chu kỳ bằng cách đi ngược parentMap
+            const cyclePath: string[] = [dep, moduleId];
+            let curr = moduleId;
+            while (curr !== dep && parentMap.has(curr)) {
+              curr = parentMap.get(curr)!;
+              cyclePath.push(curr);
+            }
+            cyclePath.reverse();
+            const cycleStr = cyclePath.join(" -> ");
+            const cycleMsg = `Phát hiện phụ thuộc vòng tròn (Circular Dependency): ${cycleStr}`;
+            logger.error(`ModuleRegistry: ${cycleMsg}`);
+            errors.push(cycleMsg);
+            return false;
+          } else if (depState === 0) {
+            parentMap.set(dep, moduleId);
+            if (!dfs(dep)) {
+              return false;
+            }
+          }
+        }
+      }
+
+      stateMap.set(moduleId, 2); // Đã duyệt xong (visited)
+      return true;
+    };
+
+    for (const id of this.modules.keys()) {
+      if ((stateMap.get(id) || 0) === 0) {
+        dfs(id);
+      }
+    }
+
     return {
-      success: warnings.length === 0,
+      success: errors.length === 0,
       warnings,
       errors
     };

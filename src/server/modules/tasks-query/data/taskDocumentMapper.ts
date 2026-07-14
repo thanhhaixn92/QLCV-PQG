@@ -25,6 +25,8 @@ export const taskDocumentMapper = {
       status = "backlog";
     } else if (rawStatus === "todo") {
       status = "todo";
+    } else if (rawStatus === "cancelled") {
+      status = "cancelled";
     }
 
     // Safely map priority
@@ -125,14 +127,26 @@ export const taskDocumentMapper = {
 
     const departmentId = docData.departmentId ? String(docData.departmentId) : null;
 
+    const description = docData.description ? String(docData.description) : undefined;
+    const collaboratorIds = Array.isArray(docData.collaboratorIds) ? docData.collaboratorIds.map(String) : undefined;
+    const attachments = Array.isArray(docData.attachments) ? docData.attachments.map((a: any) => ({
+      id: String(a.id),
+      name: String(a.name),
+      url: String(a.url),
+      size: typeof a.size === 'number' ? a.size : undefined
+    })) : undefined;
+
     return {
       id: docId,
       title,
+      description,
       status,
       priority,
       assignee,
       creator,
       departmentId,
+      collaboratorIds,
+      attachments,
       dueAt,
       createdAt,
       updatedAt,

@@ -11,6 +11,7 @@ export const appModuleManifestSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   displayName: z.string().min(1),
   description: z.string(),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/).default("1.0.0"),
   routes: z.array(z.string()),
   requiredPermissions: z.array(z.string()),
   dependencies: z.object({
@@ -18,4 +19,9 @@ export const appModuleManifestSchema = z.object({
     optional: z.array(z.string()),
   }),
   tools: z.array(z.string()),
+  capabilities: z.array(z.string()).default([]),
+  migrations: z.array(z.object({
+    version: z.string().regex(/^\d+\.\d+\.\d+$/),
+    description: z.string()
+  })).default([]),
 });

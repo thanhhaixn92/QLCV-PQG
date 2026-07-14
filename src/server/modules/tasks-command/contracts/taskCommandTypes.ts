@@ -1,7 +1,7 @@
-import { TaskStatus, TaskPriority } from "../../../../shared/contracts/tasks/taskContracts";
+import { TaskStatus, TaskPriority, TaskAttachment } from "../../../../shared/contracts/tasks/taskContracts";
 import { UserRole, Permission } from "../../../../shared/permissions/permissions";
 
-export type TaskTransition = "start" | "complete" | "reopen";
+export type TaskTransition = "start" | "complete" | "cancel" | "reopen";
 
 export interface UserReference {
   uid: string;
@@ -17,6 +17,8 @@ export interface TaskRecord {
   departmentId: string | null;
   creator: UserReference;
   assignee: UserReference | null;
+  collaboratorIds?: string[];
+  attachments?: TaskAttachment[];
   dueAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -37,6 +39,8 @@ export interface CreateTaskCommand {
   description?: string | null;
   priority?: TaskPriority | null;
   departmentId?: string | null;
+  collaboratorIds?: string[];
+  attachments?: TaskAttachment[];
   dueAt?: string | null;
 }
 
@@ -44,6 +48,8 @@ export interface UpdateTaskCommand {
   title?: string;
   description?: string | null;
   priority?: TaskPriority | null;
+  collaboratorIds?: string[];
+  attachments?: TaskAttachment[];
   dueAt?: string | null;
   expectedVersion: number;
 }
@@ -69,6 +75,8 @@ export interface TaskCommandRepository {
       description: string | null;
       priority: TaskPriority | null;
       departmentId: string | null;
+      collaboratorIds?: string[];
+      attachments?: TaskAttachment[];
       dueAt: string | null;
     },
     context: TaskCommandContext
@@ -80,6 +88,8 @@ export interface TaskCommandRepository {
       title?: string;
       description?: string | null;
       priority?: TaskPriority | null;
+      collaboratorIds?: string[];
+      attachments?: TaskAttachment[];
       dueAt?: string | null;
     },
     expectedVersion: number,

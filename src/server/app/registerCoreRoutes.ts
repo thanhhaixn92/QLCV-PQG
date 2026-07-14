@@ -138,7 +138,7 @@ export function registerCoreRoutes(router: Router) {
     checkPermission("audit.read"),
     async (req: AppRequest, res: Response, next: NextFunction) => {
       try {
-        const logs = auditService.getRecentLogs();
+        const logs = await auditService.getRecentLogsFromDb(50);
         res.json({
           data: logs,
           requestId: req.requestId

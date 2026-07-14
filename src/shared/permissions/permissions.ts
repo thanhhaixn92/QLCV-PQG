@@ -13,6 +13,11 @@ export const ALL_PERMISSIONS = [
   "agent.use",
   "agent.tools.read",
   "audit.read",
+  "documents.read",
+  "documents.create",
+  "documents.update",
+  "documents.delete",
+  "documents.manage",
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -31,6 +36,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "agent.use",
     "agent.tools.read",
     "audit.read",
+    "documents.read",
+    "documents.create",
+    "documents.update",
+    "documents.delete",
+    "documents.manage",
   ],
   manager: [
     "modules.read",
@@ -42,6 +52,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "tasks.archive",
     "agent.use",
     "agent.tools.read",
+    "documents.read",
+    "documents.create",
+    "documents.update",
+    "documents.delete",
   ],
   editor: [
     "modules.read",
@@ -51,6 +65,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "tasks.assign",
     "tasks.transition",
     "agent.use",
+    "documents.read",
+    "documents.create",
+    "documents.update",
   ],
   operator: [
     "modules.read",
@@ -58,8 +75,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "tasks.create",
     "tasks.update",
     "tasks.transition",
+    "documents.read",
+    "documents.create",
+    "documents.update",
   ],
   viewer: [
     "modules.read",
+    "documents.read",
   ],
 };

@@ -22,7 +22,8 @@ const STATUS_LABELS: Record<TaskStatus, { text: string; color: string; bg: strin
   "backlog": { text: "Backlog", color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200" },
   "todo": { text: "Cần làm", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
   "in_progress": { text: "Đang làm", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-100" },
-  "completed": { text: "Hoàn thành", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" }
+  "completed": { text: "Hoàn thành", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" },
+  "cancelled": { text: "Đã hủy", color: "text-slate-500", bg: "bg-slate-100", border: "border-slate-200" }
 };
 
 const PRIORITY_LABELS: Record<TaskPriority, { text: string; color: string; bg: string }> = {

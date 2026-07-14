@@ -47,6 +47,7 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
     // Apply selective projection for performance & data minimalization
     queryRef = queryRef.select(
       "title",
+      "description",
       "status",
       "priority",
       "assignee",
@@ -56,6 +57,8 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
       "creatorUid",
       "creatorName",
       "departmentId",
+      "collaboratorIds",
+      "attachments",
       "dueAt",
       "createdAt",
       "updatedAt",
@@ -141,7 +144,8 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
           Filter.where("creator.uid", "==", actorUid),
           Filter.where("creatorUid", "==", actorUid),
           Filter.where("assignee.uid", "==", actorUid),
-          Filter.where("assigneeUid", "==", actorUid)
+          Filter.where("assigneeUid", "==", actorUid),
+          Filter.where("collaboratorIds", "array-contains", actorUid)
         )
       );
     } else {
@@ -327,7 +331,8 @@ export class FirestoreTaskQueryRepository implements TaskQueryRepository {
         const actorUid = context.actorUid;
         if (
           task.creator?.uid === actorUid ||
-          task.assignee?.uid === actorUid
+          task.assignee?.uid === actorUid ||
+          (task.collaboratorIds && task.collaboratorIds.includes(actorUid))
         ) {
           return task;
         }

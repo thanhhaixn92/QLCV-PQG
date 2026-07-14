@@ -43,7 +43,8 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
       description: string | null;
       priority: TaskPriority | null;
       departmentId: string | null;
-      assigneeUid: string | null;
+      collaboratorIds?: string[];
+      attachments?: any[];
       dueAt: string | null;
     },
     context: TaskCommandContext
@@ -77,6 +78,8 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
         displayName: `User ${context.actorUid}`
       },
       assignee: null,
+      collaboratorIds: input.collaboratorIds || [],
+      attachments: input.attachments || [],
       dueAt: input.dueAt,
       createdAt: nowIso,
       updatedAt: nowIso,
@@ -94,6 +97,8 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
       title?: string;
       description?: string | null;
       priority?: TaskPriority | null;
+      collaboratorIds?: string[];
+      attachments?: any[];
       dueAt?: string | null;
     },
     expectedVersion: number,
@@ -119,6 +124,8 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
       title: input.title !== undefined ? input.title : task.title,
       description: input.description !== undefined ? input.description : task.description,
       priority: input.priority !== undefined ? input.priority : task.priority,
+      collaboratorIds: input.collaboratorIds !== undefined ? input.collaboratorIds : task.collaboratorIds,
+      attachments: input.attachments !== undefined ? input.attachments : task.attachments,
       dueAt: input.dueAt !== undefined ? input.dueAt : task.dueAt,
       version: task.version + 1,
       updatedAt: new Date().toISOString()
@@ -162,20 +169,15 @@ export class InMemoryTaskCommandRepository implements TaskCommandRepository {
       }
       nextStatus = "completed";
     } else if (transition === "reopen") {
-      if (task.status !== "completed") {
-        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", "Chỉ công việc đã hoàn thành mới có thể mở lại.", context.requestId);
+      if (task.status !== "completed" && task.status !== "cancelled") {
+        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", "Chỉ công việc đã hoàn thành hoặc đã hủy mới có thể mở lại.", context.requestId);
       }
       nextStatus = "todo";
-    } else if (transition === "block") {
-      if (task.status !== "in_progress") {
-        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển trạng thái sang blocked không hợp lệ từ ${task.status}.`, context.requestId);
-      }
-      throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển đổi trạng thái block chưa được hỗ trợ bởi hệ thống danh mục hiện tại.`, context.requestId);
     } else if (transition === "cancel") {
-      if (task.status !== "todo" && task.status !== "in_progress") {
-        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển trạng thái sang cancelled không hợp lệ từ ${task.status}.`, context.requestId);
+      if (task.status === "completed") {
+        throw new AppError("TASK_TRANSITION_NOT_ALLOWED", "Không thể hủy công việc đã hoàn thành.", context.requestId);
       }
-      throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển đổi trạng thái cancel chưa được hỗ trợ bởi hệ thống danh mục hiện tại.`, context.requestId);
+      nextStatus = "cancelled";
     } else {
       throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển đổi trạng thái ${transition} chưa được cấu hình.`, context.requestId);
     }

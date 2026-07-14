@@ -43,6 +43,16 @@ export function validateConfig() {
     missingRequired.push("NODE_ENV");
   }
 
+  // Production environment checks to prevent missing Firebase Auth or enabled mock auth
+  if (serverConfig.nodeEnv === "production" && process.env.NODE_ENV !== "test") {
+    if (!serverConfig.firebaseProjectId) {
+      throw new Error("CRITICAL_CONFIGURATION_ERROR: FIREBASE_PROJECT_ID is strictly required in production mode to ensure Firebase Auth integrity.");
+    }
+    if (serverConfig.allowMockAuth) {
+      throw new Error("SECURITY_VIOLATION_ERROR: ALLOW_MOCK_AUTH must be disabled in production mode.");
+    }
+  }
+
   if (missingRequired.length > 0) {
     throw new Error(`Missing required configuration: ${missingRequired.join(", ")}`);
   }

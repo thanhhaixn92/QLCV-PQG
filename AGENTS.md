@@ -23,3 +23,17 @@ Tài liệu này lưu trữ các quy tắc phát triển dự án QLCV_PQG Next 
 - **Trạng thái hợp lệ**: Chỉ lưu trữ các trạng thái `enabled`, `disabled`, `degraded`. Trạng thái `unavailable` được suy diễn động ở thời điểm chạy nếu mô-đun không được đăng ký.
 - **Xử lý đồng thời (Concurrency)**: Bắt buộc áp dụng kiểm soát đồng thời lạc quan (Optimistic Concurrency Control - OCC) bằng cách sử dụng `expectedVersion` và các giao dịch (Transactions) để tránh xung đột ghi đè dữ liệu.
 - **Tính tự phục hồi**: Startup hydration của mô-đun phải được thiết kế để không gây lỗi crash máy chủ khi xảy ra lỗi Firestore; trong trường hợp đó, hệ thống tự động rơi về trạng thái suy giảm (degraded) có kiểm soát hoặc in-memory.
+
+## 4. Quy tắc làm việc với Google AI Studio (AI Studio Rules of Engagement)
+
+AI Studio có thể tiếp tục được dùng để phát triển, nhưng không được là nơi quyết định trạng thái production. Quy trình và cam kết bắt buộc bao gồm:
+
+- **Phát triển theo nhánh (Branch-based development)**: AI Studio chỉ được phép tạo và sửa đổi trên các nhánh tính năng (`feature/*`), không bao giờ được push trực tiếp lên nhánh `main`.
+- **Giới hạn phạm vi (Strict Scoping)**: Mỗi lượt phát triển phải bám sát phạm vi của một Checkpoint duy nhất. Không tự ý mở rộng, phát triển lan sang các Checkpoint tiếp theo khi chưa được nghiệm thu.
+- **Tuân thủ Hợp đồng & Bảo mật (Contract & Security Preservation)**:
+  - Tuyệt đối không xóa bỏ các chốt bảo mật (Security Guards) hoặc hạ thấp tiêu chuẩn xác thực để vượt qua các bài kiểm định hoặc làm bài kiểm thử (tests) chuyển xanh.
+  - Không phá vỡ các hợp đồng giao diện dữ liệu (Contracts) đã thỏa thuận ở lớp `/src/shared`.
+- **Cơ chế xác thực nghiệm thu (Verification & Definition of Done)**:
+  - Bắt buộc thực hiện kiểm tra kiểm lỗi tĩnh (`npm run lint`), kiểm thử tự động (`npm test`), và biên dịch thành công (`npm run build`) trước khi hoàn tất công việc.
+  - Mỗi khi kết thúc nhiệm vụ, phải cập nhật và phản ánh chính xác kết quả vào tệp tài liệu kiến trúc hoặc hiện trạng `Design.md`.
+

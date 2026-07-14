@@ -1,0 +1,207 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Lưu trữ thông tin chi tiết người dùng, vai trò và phòng ban được liên kết.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "ID duy nhất từ Firebase Auth" },
+        "email": { "type": "string", "format": "email", "description": "Địa chỉ email người dùng" },
+        "displayName": { "type": "string", "maxLength": 100, "description": "Tên hiển thị" },
+        "role": { "type": "string", "enum": ["admin", "manager", "editor", "operator", "viewer"], "description": "Vai trò hệ thống" },
+        "departmentIds": { "type": "array", "description": "Danh sách mã phòng ban trực thuộc" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Thời gian khởi tạo" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Thời gian cập nhật gần nhất" }
+      },
+      "required": ["uid", "email", "role", "createdAt", "updatedAt"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "Danh sách các phòng ban tổ chức trong hệ thống.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Mã phòng ban duy nhất" },
+        "name": { "type": "string", "maxLength": 150, "description": "Tên phòng ban" },
+        "description": { "type": "string", "maxLength": 500, "description": "Mô tả phòng ban" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "createdAt"]
+    },
+    "RoleConfiguration": {
+      "title": "Role Configuration",
+      "description": "Cấu hình phân quyền hệ thống gán trực tiếp cho từng Vai trò.",
+      "type": "object",
+      "properties": {
+        "roleId": { "type": "string", "enum": ["admin", "manager", "editor", "operator", "viewer"] },
+        "permissions": { "type": "array", "description": "Danh sách các quyền của vai trò" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roleId", "permissions", "updatedAt"]
+    },
+    "ModuleState": {
+      "title": "Module State",
+      "description": "Trạng thái bật/tắt động của các module nghiệp vụ.",
+      "type": "object",
+      "properties": {
+        "moduleId": { "type": "string" },
+        "state": { "type": "string", "enum": ["enabled", "disabled", "degraded"] },
+        "version": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" },
+        "reason": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["moduleId", "state", "version", "updatedAt", "updatedBy"]
+    },
+    "AuditEvent": {
+      "title": "Audit Event",
+      "description": "Nhật ký kiểm toán hệ thống ghi lại mọi hành động nhạy cảm hoặc thay đổi dữ liệu.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "actor": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["user", "system", "agent"] },
+            "id": { "type": "string" }
+          },
+          "required": ["type"]
+        },
+        "action": { "type": "string" },
+        "moduleId": { "type": "string" },
+        "targetType": { "type": "string" },
+        "targetId": { "type": "string" },
+        "requestId": { "type": "string" },
+        "result": { "type": "string", "enum": ["success", "denied", "failed"] },
+        "reason": { "type": "string" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["id", "timestamp", "actor", "action", "requestId", "result"]
+    },
+    "MigrationHistory": {
+      "title": "Migration History",
+      "description": "Lịch sử thực thi các bản di chuyển dữ liệu (Migrations).",
+      "type": "object",
+      "properties": {
+        "version": { "type": "string" },
+        "description": { "type": "string" },
+        "appliedAt": { "type": "string", "format": "date-time" },
+        "requestId": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "failed"] }
+      },
+      "required": ["version", "appliedAt", "requestId", "status"]
+    },
+    "MigrationLock": {
+      "title": "Migration Lock",
+      "description": "Khóa phân tán dùng để ngăn chặn nhiều instance chạy migrations cùng lúc.",
+      "type": "object",
+      "properties": {
+        "locked": { "type": "boolean" },
+        "lockedAt": { "type": "string", "format": "date-time" },
+        "lockedBy": { "type": "string" },
+        "leaseTimeMs": { "type": "integer" }
+      },
+      "required": ["locked", "lockedAt", "lockedBy", "leaseTimeMs"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "Lưu trữ siêu dữ liệu và liên kết phiên bản của tài liệu tải lên.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "extension": { "type": "string" },
+        "size": { "type": "integer" },
+        "physicalPath": { "type": "string" },
+        "folderId": { "type": "string" },
+        "creator": {
+          "type": "object",
+          "properties": {
+            "uid": { "type": "string" },
+            "displayName": { "type": "string" }
+          },
+          "required": ["uid"]
+        },
+        "departmentId": { "type": "string" },
+        "taskId": { "type": "string" },
+        "version": { "type": "integer" },
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "version": { "type": "integer" },
+              "name": { "type": "string" },
+              "physicalPath": { "type": "string" },
+              "size": { "type": "integer" },
+              "uploadedAt": { "type": "string" },
+              "uploadedBy": {
+                "type": "object",
+                "properties": {
+                  "uid": { "type": "string" },
+                  "displayName": { "type": "string" }
+                },
+                "required": ["uid"]
+              }
+            },
+            "required": ["version", "name", "physicalPath", "size", "uploadedAt", "uploadedBy"]
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "extension", "size", "physicalPath", "creator", "version", "createdAt", "updatedAt"]
+    },
+    "Folder": {
+      "title": "Folder",
+      "description": "Thư mục phân cấp để quản lý tài liệu.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "parentFolderId": { "type": "string" },
+        "creatorUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "creatorUid", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Bộ sưu tập hồ sơ người dùng."
+    },
+    "departments/{departmentId}": {
+      "schema": "Department",
+      "description": "Bộ sưu tập các phòng ban tổ chức."
+    },
+    "system_roles/{roleId}": {
+      "schema": "RoleConfiguration",
+      "description": "Cấu hình quyền hạn của các vai trò."
+    },
+    "system_module_states/{moduleId}": {
+      "schema": "ModuleState",
+      "description": "Lưu trữ trạng thái bật tắt của module."
+    },
+    "audit_logs/{logId}": {
+      "schema": "AuditEvent",
+      "description": "Nhật ký kiểm toán hệ thống dạng Append-only."
+    },
+    "system_migrations/{version}": {
+      "schema": "MigrationHistory",
+      "description": "Danh sách lịch sử các phiên bản migration đã áp dụng thành công."
+    },
+    "system_migration_lock/lock": {
+      "schema": "MigrationLock",
+      "description": "Tài liệu duy nhất để quản lý khóa phân tán khi chạy migrations."
+    },
+    "documents/{documentId}": {
+      "schema": "Document",
+      "description": "Bộ sưu tập siêu dữ liệu tài liệu."
+    },
+    "folders/{folderId}": {
+      "schema": "Folder",
+      "description": "Bộ sưu tập các thư mục quản lý tài liệu."
+    }
+  }
+}

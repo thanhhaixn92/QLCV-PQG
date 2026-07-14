@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutGrid, ListTodo, Shield, Settings, Sliders, X } from "lucide-react";
+import { LayoutGrid, Shield, Settings, Sliders, X } from "lucide-react";
+import { clientModuleRegistry } from "../infrastructure/modules/clientModuleRegistry";
 
 interface NavigationProps {
   activeModules: Record<string, boolean>;
@@ -20,6 +21,9 @@ export function Navigation({ activeModules, userRole, onSetRole, isOpen = false,
       onClose();
     }
   };
+
+  const clientModules = clientModuleRegistry.getAllModules();
+
 
   return (
     <>
@@ -70,23 +74,37 @@ export function Navigation({ activeModules, userRole, onSetRole, isOpen = false,
             </Link>
 
             <p className="pt-4 px-3 py-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Mô-đun kích hoạt</p>
-            {activeModules["tasks-query"] ? (
-              <Link
-                to="/tasks-query"
-                onClick={handleLinkClick}
-                className={`flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors ${
-                  isActive("/tasks-query") ? "bg-slate-700 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                }`}
-              >
-                <ListTodo size={16} />
-                Truy vấn Công việc
-              </Link>
-            ) : (
-              <div className="flex items-center justify-between px-3 py-2 text-slate-500 cursor-not-allowed group">
-                <span className="text-sm">Truy vấn Công việc</span>
-                <span className="text-[9px] bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">DISABLED</span>
-              </div>
-            )}
+            {clientModules.map((mod) => {
+              const { id } = mod.manifest;
+              const { menuItem } = mod;
+              if (!menuItem) return null;
+
+              const isEnabled = activeModules[id] === true;
+              const IconComp = menuItem.icon;
+
+              if (isEnabled) {
+                return (
+                  <Link
+                    key={id}
+                    to={menuItem.path}
+                    onClick={handleLinkClick}
+                    className={`flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                      isActive(menuItem.path) ? "bg-slate-700 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                    }`}
+                  >
+                    <IconComp size={16} />
+                    {menuItem.label}
+                  </Link>
+                );
+              } else {
+                return (
+                  <div key={id} className="flex items-center justify-between px-3 py-2 text-slate-500 cursor-not-allowed group">
+                    <span className="text-sm">{menuItem.label}</span>
+                    <span className="text-[9px] bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">DISABLED</span>
+                  </div>
+                );
+              }
+            })}
           </nav>
         </div>
 

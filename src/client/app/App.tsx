@@ -28,6 +28,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState(apiClient.getMockRole());
   const [audits, setAudits] = useState<AuditLogItem[]>([]);
+  const [isMockAllowedOnServer, setIsMockAllowedOnServer] = useState(true);
   
   // Interactive audit details modal
   const [selectedAudit, setSelectedAudit] = useState<AuditLogItem | null>(null);
@@ -36,6 +37,9 @@ export function App() {
   const loadConfigAndAudits = async (isToggling: boolean = false) => {
     try {
       const config = await runtimeConfigClient.getRuntimeConfig();
+      const mockAllowed = config.allowMockAuth === true;
+      setIsMockAllowedOnServer(mockAllowed);
+
       const modulesMap: Record<string, boolean> = {};
       for (const [id, value] of Object.entries(config.modules)) {
         modulesMap[id] = value.state === "enabled";
@@ -43,9 +47,9 @@ export function App() {
       setActiveModules(modulesMap);
       setError(null);
 
-      // Fetch real audits if role has permission
+      // Fetch real audits if role has permission and mock auth is allowed on server
       const currentRole = apiClient.getMockRole();
-      if (currentRole === "admin") {
+      if (currentRole === "admin" && mockAllowed) {
         try {
           const res = await apiClient.request<{ data: any[] }>("/api/admin/audits");
           if (res && res.data) {
@@ -107,6 +111,10 @@ export function App() {
   };
 
   const toggleModuleState = async (moduleId: string, currentState: boolean) => {
+    if (!isMockAllowedOnServer) {
+      alert("Lỗi thực thi từ server: Môi trường này yêu cầu xác thực bằng tài khoản thực, không chấp nhận tài khoản giả lập.");
+      return;
+    }
     try {
       setLoading(true);
       const targetState = currentState ? "disabled" : "enabled";

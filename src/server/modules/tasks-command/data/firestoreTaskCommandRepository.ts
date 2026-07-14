@@ -2,7 +2,7 @@ import { TaskCommandRepository, TaskRecord, TaskCommandContext, TaskTransition, 
 import { AppError } from "../../../../shared/errors/appError";
 import { TaskPriority } from "../../../../shared/contracts/tasks/taskContracts";
 import { getConfiguredFirestore } from "../../../infrastructure/firebase/firebaseAdmin";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 import { logger } from "../../../infrastructure/logging/logger";
 
 export class FirestoreTaskCommandRepository implements TaskCommandRepository {
@@ -12,6 +12,8 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
       description: string | null;
       priority: TaskPriority | null;
       departmentId: string | null;
+      collaboratorIds?: string[];
+      attachments?: any[];
       dueAt: string | null;
     },
     context: TaskCommandContext
@@ -31,7 +33,7 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
     }
 
     const db = getConfiguredFirestore();
-    const taskId = `task-${uuidv4()}`;
+    const taskId = `task-${crypto.randomUUID()}`;
     const nowIso = new Date().toISOString();
 
     const task: TaskRecord = {
@@ -46,6 +48,8 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
         displayName: `User ${context.actorUid}` // This should ideally be fetched or passed, but keeping it simple as in mock
       },
       assignee: null,
+      collaboratorIds: input.collaboratorIds || [],
+      attachments: input.attachments || [],
       dueAt: input.dueAt,
       createdAt: nowIso,
       updatedAt: nowIso,
@@ -68,6 +72,8 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
       title?: string;
       description?: string | null;
       priority?: TaskPriority | null;
+      collaboratorIds?: string[];
+      attachments?: any[];
       dueAt?: string | null;
     },
     expectedVersion: number,
@@ -92,7 +98,7 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
               throw new AppError("PERMISSION_DENIED", "Bạn không có quyền thao tác trên công việc của phòng ban này.", context.requestId);
             }
           } else if (context.actorRole === "operator" || context.actorRole === "editor") {
-            if (task.creator.uid !== context.actorUid && task.assignee?.uid !== context.actorUid) {
+            if (task.creator.uid !== context.actorUid && task.assignee?.uid !== context.actorUid && !(task.collaboratorIds && task.collaboratorIds.includes(context.actorUid))) {
               throw new AppError("PERMISSION_DENIED", "Bạn không có quyền thao tác trên công việc không do bạn tạo hoặc được phân công.", context.requestId);
             }
           } else {
@@ -113,6 +119,8 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
           title: input.title !== undefined ? input.title : task.title,
           description: input.description !== undefined ? input.description : task.description,
           priority: input.priority !== undefined ? input.priority : task.priority,
+          collaboratorIds: input.collaboratorIds !== undefined ? input.collaboratorIds : task.collaboratorIds,
+          attachments: input.attachments !== undefined ? input.attachments : task.attachments,
           dueAt: input.dueAt !== undefined ? input.dueAt : task.dueAt,
           version: task.version + 1,
           updatedAt: new Date().toISOString()
@@ -181,10 +189,15 @@ export class FirestoreTaskCommandRepository implements TaskCommandRepository {
           }
           nextStatus = "completed";
         } else if (transition === "reopen") {
-          if (task.status !== "completed") {
-            throw new AppError("TASK_TRANSITION_NOT_ALLOWED", "Chỉ công việc đã hoàn thành mới có thể mở lại.", context.requestId);
+          if (task.status !== "completed" && task.status !== "cancelled") {
+            throw new AppError("TASK_TRANSITION_NOT_ALLOWED", "Chỉ công việc đã hoàn thành hoặc hủy mới có thể mở lại.", context.requestId);
           }
           nextStatus = "todo";
+        } else if (transition === "cancel") {
+          if (task.status === "completed") {
+            throw new AppError("TASK_TRANSITION_NOT_ALLOWED", "Không thể hủy công việc đã hoàn thành.", context.requestId);
+          }
+          nextStatus = "cancelled";
         } else {
           throw new AppError("TASK_TRANSITION_NOT_ALLOWED", `Chuyển đổi trạng thái ${transition} chưa được hỗ trợ.`, context.requestId);
         }

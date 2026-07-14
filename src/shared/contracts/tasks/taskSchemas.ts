@@ -1,11 +1,19 @@
 import { z } from "zod";
 
-export const taskStatusSchema = z.enum(["backlog", "todo", "in_progress", "completed"]);
+export const taskStatusSchema = z.enum(["backlog", "todo", "in_progress", "completed", "cancelled"]);
 export const taskPrioritySchema = z.enum(["low", "medium", "high"]);
+
+export const taskAttachmentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  url: z.string(),
+  size: z.number().optional()
+});
 
 export const taskSummarySchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
+  description: z.string().optional(),
   status: taskStatusSchema,
   priority: taskPrioritySchema.nullable(),
   assignee: z.object({
@@ -17,6 +25,8 @@ export const taskSummarySchema = z.object({
     displayName: z.string().optional()
   }).nullable(),
   departmentId: z.string().nullable(),
+  collaboratorIds: z.array(z.string()).optional(),
+  attachments: z.array(taskAttachmentSchema).optional(),
   dueAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   createdAt: z.string().nullable(),

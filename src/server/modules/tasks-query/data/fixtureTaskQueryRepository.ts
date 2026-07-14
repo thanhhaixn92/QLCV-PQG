@@ -354,7 +354,7 @@ export class FixtureTaskQueryRepository implements TaskQueryRepository {
         );
       }
       allowedTasks = allowedTasks.filter(
-        (t) => t.creator?.uid === actorUid || t.assignee?.uid === actorUid
+        (t) => t.creator?.uid === actorUid || t.assignee?.uid === actorUid || (t.collaboratorIds && t.collaboratorIds.includes(actorUid))
       );
     } else {
       // No permissions
@@ -511,7 +511,7 @@ export class FixtureTaskQueryRepository implements TaskQueryRepository {
       }
     } else if (hasReadPermission) {
       const actorUid = context.actorUid;
-      if (fullTask.creator?.uid === actorUid || fullTask.assignee?.uid === actorUid) {
+      if (fullTask.creator?.uid === actorUid || fullTask.assignee?.uid === actorUid || (fullTask.collaboratorIds && fullTask.collaboratorIds.includes(actorUid))) {
         return fullTask;
       }
     }

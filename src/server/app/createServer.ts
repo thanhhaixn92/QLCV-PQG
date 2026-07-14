@@ -4,6 +4,7 @@ import { registerCoreRoutes } from "./registerCoreRoutes";
 import { registerAllModules } from "../modules/registerModules";
 import { moduleRegistry } from "../modules/moduleRegistry";
 import { moduleStateService } from "../modules/moduleStateService";
+import { migrationService } from "../modules/migrationService";
 import { AppError } from "../../shared/errors/appError";
 import { logger } from "../infrastructure/logging/logger";
 import { requestInitializer } from "../auth/authenticateRequest";
@@ -13,6 +14,27 @@ export async function createServer() {
   validateConfig();
   registerAllModules();
   await moduleStateService.hydrateFromRepository();
+  await migrationService.runMigrations("system-bootstrap");
+
+  // Khởi động tiến trình quét cảnh báo công việc quá hạn/sắp đến hạn tự động (Background Scheduler)
+  setTimeout(async () => {
+    try {
+      const { notificationService } = await import("../modules/notifications/services/notificationService");
+      await notificationService.scanAndNotifyOverdueTasks("system-bootstrap-scan");
+
+      // Cài đặt tần suất quét định kỳ (Mỗi 1 giờ quét hệ thống một lần)
+      setInterval(async () => {
+        try {
+          await notificationService.scanAndNotifyOverdueTasks("system-cron-hourly");
+        } catch (cronErr: any) {
+          logger.error(`[Background Cron] Lỗi khi chạy quét tác vụ định kỳ: ${cronErr.message}`);
+        }
+      }, 60 * 60 * 1000);
+
+    } catch (cronInitErr: any) {
+      logger.warn(`[Background Cron] Trạng thái khởi tạo tác vụ quét tự động: ${cronInitErr.message}`);
+    }
+  }, 5000);
 
   const app = express();
   
