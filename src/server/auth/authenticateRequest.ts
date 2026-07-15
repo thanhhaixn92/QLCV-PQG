@@ -73,6 +73,12 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
         departmentIds,
         isMock: true,
       };
+
+      if (serverConfig.appMode === "single-owner") {
+        const { requireOwner } = await import("./authorization");
+        return requireOwner(req, res, next);
+      }
+
       return next();
     }
 
@@ -105,6 +111,11 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
         isMock: false,
       };
       
+      if (serverConfig.appMode === "single-owner") {
+        const { requireOwner } = await import("./authorization");
+        return requireOwner(req, res, next);
+      }
+
       next();
     } catch (err: unknown) {
       if (err instanceof AppError && err.code === "PERMISSION_DENIED") {

@@ -20,6 +20,8 @@ export const runtimeConfigRoute = (req: AppRequest, res: Response, next: NextFun
       version: 1,
       environment: serverConfig.nodeEnv,
       allowMockAuth: serverConfig.allowMockAuth && serverConfig.nodeEnv !== "production",
+      appMode: serverConfig.appMode,
+      appOwnerUid: serverConfig.appOwnerUid,
       modules: modulesMap
     };
 

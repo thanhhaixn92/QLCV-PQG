@@ -14,6 +14,8 @@ export interface ServerConfig {
   allowMockAuth: boolean;
   devRoleMappings: string | undefined;
   tasksTimestampMode: string | undefined;
+  appMode: string | undefined;
+  appOwnerUid: string | undefined;
 }
 
 const parseAllowedDomains = (val: string | undefined): string[] => {
@@ -34,9 +36,11 @@ export const serverConfig: ServerConfig = {
   allowMockAuth: process.env.ALLOW_MOCK_AUTH === "true",
   devRoleMappings: process.env.DEV_ROLE_MAPPINGS,
   tasksTimestampMode: process.env.TASKS_TIMESTAMP_MODE,
+  appMode: process.env.APP_MODE,
+  appOwnerUid: process.env.APP_OWNER_UID,
 };
 
-export function validateConfig() {
+export async function validateConfig() {
   const missingRequired: string[] = [];
 
   if (!serverConfig.nodeEnv) {
@@ -44,12 +48,24 @@ export function validateConfig() {
   }
 
   // Production environment checks to prevent missing Firebase Auth or enabled mock auth
-  if (serverConfig.nodeEnv === "production" && process.env.NODE_ENV !== "test") {
+  if ((serverConfig.nodeEnv === "production" || process.env.NODE_ENV === "production") && process.env.NODE_ENV !== "test") {
     if (!serverConfig.firebaseProjectId) {
       throw new Error("CRITICAL_CONFIGURATION_ERROR: FIREBASE_PROJECT_ID is strictly required in production mode to ensure Firebase Auth integrity.");
     }
     if (serverConfig.allowMockAuth) {
       throw new Error("SECURITY_VIOLATION_ERROR: ALLOW_MOCK_AUTH must be disabled in production mode.");
+    }
+    if (serverConfig.appMode === "single-owner") {
+      if (!serverConfig.appOwnerUid) {
+        throw new Error("CRITICAL_CONFIGURATION_ERROR: APP_OWNER_UID is strictly required in production mode when APP_MODE is single-owner.");
+      }
+    }
+
+    // Dynamic import to avoid circular dependency
+    const { initFirebaseAdmin } = await import("../infrastructure/firebase/firebaseAdmin");
+    const app = initFirebaseAdmin();
+    if (!app) {
+      throw new Error("CRITICAL_CONFIGURATION_ERROR: Firebase Admin SDK failed to initialize in production mode.");
     }
   }
 

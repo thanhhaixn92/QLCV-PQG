@@ -11,7 +11,7 @@ import { requestInitializer } from "../auth/authenticateRequest";
 import { AppRequest } from "../auth/authTypes";
 
 export async function createServer() {
-  validateConfig();
+  await validateConfig();
   registerAllModules();
   await moduleStateService.hydrateFromRepository();
   await migrationService.runMigrations("system-bootstrap");

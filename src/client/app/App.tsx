@@ -4,6 +4,7 @@ import { AppRoutes } from "../routes/AppRoutes";
 import { runtimeConfigClient } from "../services/runtimeConfigClient";
 import { apiClient } from "../services/apiClient";
 import { LoadingState } from "../components/LoadingState";
+import { OwnerAccessDeniedPage } from "../shell/OwnerAccessDeniedPage";
 import { 
   ToggleLeft, ToggleRight, Radio, RefreshCw, Cpu, Activity, History, 
   AlertTriangle, X, Copy, ShieldAlert, Lock, ShieldCheck, CheckCircle2,
@@ -29,6 +30,8 @@ export function App() {
   const [role, setRole] = useState(apiClient.getMockRole());
   const [audits, setAudits] = useState<AuditLogItem[]>([]);
   const [isMockAllowedOnServer, setIsMockAllowedOnServer] = useState(true);
+  const [appMode, setAppMode] = useState<string | undefined>(undefined);
+  const [appOwnerUid, setAppOwnerUid] = useState<string | undefined>(undefined);
   
   // Interactive audit details modal
   const [selectedAudit, setSelectedAudit] = useState<AuditLogItem | null>(null);
@@ -39,6 +42,8 @@ export function App() {
       const config = await runtimeConfigClient.getRuntimeConfig();
       const mockAllowed = config.allowMockAuth === true;
       setIsMockAllowedOnServer(mockAllowed);
+      setAppMode(config.appMode);
+      setAppOwnerUid(config.appOwnerUid);
 
       const modulesMap: Record<string, boolean> = {};
       for (const [id, value] of Object.entries(config.modules)) {
@@ -94,8 +99,26 @@ export function App() {
   };
 
   const handleRoleChange = (newRole: string) => {
-    apiClient.setMockRole(newRole);
-    setRole(newRole);
+    if (newRole.startsWith("owner-custom:")) {
+      const customUid = newRole.substring("owner-custom:".length);
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("qlcv_mock_user", JSON.stringify({
+          uid: customUid,
+          email: "owner@qlcv.local",
+          displayName: "System App Owner",
+          emailVerified: true,
+          isMock: true,
+          role: "admin",
+        }));
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("storage"));
+        }
+      }
+      setRole("admin");
+    } else {
+      apiClient.setMockRole(newRole);
+      setRole(newRole);
+    }
     
     // Log role transition locally
     const auditItem: AuditLogItem = {
@@ -477,6 +500,40 @@ export function App() {
       )}
     </div>
   );
+
+  let currentUid = `mock-uid-${role}`;
+  if (typeof localStorage !== "undefined") {
+    const stored = localStorage.getItem("qlcv_mock_user");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.uid) {
+          currentUid = parsed.uid;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  const isSingleOwnerMode = appMode === "single-owner";
+  const isAccessDenied = isSingleOwnerMode && appOwnerUid && currentUid !== appOwnerUid;
+
+  if (isAccessDenied) {
+    return (
+      <OwnerAccessDeniedPage
+        ownerUid={appOwnerUid!}
+        currentUid={currentUid}
+        allowMockAuth={isMockAllowedOnServer}
+        onSetRole={(newRole) => {
+          handleRoleChange(newRole);
+        }}
+        onLogout={() => {
+          handleRoleChange("viewer");
+        }}
+      />
+    );
+  }
 
   return (
     <AppShell
