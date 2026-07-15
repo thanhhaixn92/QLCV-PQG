@@ -4,6 +4,7 @@ import { isMockAuthAllowed } from "../infrastructure/firebase/firebaseClient";
 
 class ApiClient {
   private mockToken: string = "mock-admin";
+  private isMockAllowedOnServer: boolean | null = null;
 
   setMockRole(role: string) {
     if (!isMockAuthAllowed) {
@@ -51,10 +52,25 @@ class ApiClient {
   async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers = new Headers(options.headers || {});
     
+    const normalizedPath = path.startsWith("/api/") ? path : `/api/${path.replace(/^\//, "")}`;
+    const isPublicRoute = 
+      normalizedPath === "/api/runtime-config" || 
+      normalizedPath === "/api/health" || 
+      normalizedPath === "/api/ai/health" || 
+      normalizedPath === "/api/firebase/health";
+
     if (!headers.has("Authorization")) {
       const authHeaders = await tokenService.getAuthorizationHeaders();
-      if (authHeaders["Authorization"]) {
-        headers.set("Authorization", authHeaders["Authorization"]);
+      const authHeaderVal = authHeaders["Authorization"];
+      if (authHeaderVal) {
+        const isMockToken = authHeaderVal.startsWith("Bearer mock-");
+        
+        // Skip mock token for public routes, OR if server has explicitly disabled mock auth
+        if (isMockToken && (isPublicRoute || this.isMockAllowedOnServer === false)) {
+          // Do not attach the mock Authorization header
+        } else {
+          headers.set("Authorization", authHeaderVal);
+        }
       }
     }
     headers.set("Content-Type", "application/json");
@@ -68,6 +84,12 @@ class ApiClient {
         json = JSON.parse(text);
       } catch {
         json = { message: text };
+      }
+    }
+
+    if (res.ok) {
+      if (normalizedPath === "/api/runtime-config" && json && typeof json.allowMockAuth === "boolean") {
+        this.isMockAllowedOnServer = json.allowMockAuth;
       }
     }
 

@@ -57,15 +57,21 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
       const deptPart = parts.length > 2 && parts[2] ? parts[2] : undefined;
 
       const validRoles = ["admin", "manager", "editor", "operator", "viewer"];
-      const role = validRoles.includes(rolePart) ? rolePart : "viewer";
+      let role = validRoles.includes(rolePart) ? rolePart : "viewer";
 
       let departmentIds: readonly string[] = [];
       if (deptPart) {
         departmentIds = Array.from(new Set(deptPart.split(",").map(d => d.trim()).filter(Boolean)));
       }
 
+      const resolvedUid = customUid || `mock-uid-${role}`;
+
+      if (serverConfig.appMode === "single-owner" && resolvedUid === serverConfig.appOwnerUid) {
+        role = "admin";
+      }
+
       req.user = {
-        uid: customUid || `mock-uid-${role}`,
+        uid: resolvedUid,
         email: `${role}@qlcv.local`,
         emailVerified: true,
         role: role as UserRole,
@@ -87,7 +93,11 @@ export const authenticateRequest = async (req: AppRequest, res: Response, next: 
       const decodedToken = await verifyIdToken(token) as DecodedIdToken;
       
       // Ánh xạ vai trò người dùng (user role resolver)
-      const role = resolveUserRole(decodedToken, req.requestId);
+      const role =
+        serverConfig.appMode === "single-owner" &&
+        decodedToken.uid === serverConfig.appOwnerUid
+          ? "admin"
+          : resolveUserRole(decodedToken, req.requestId);
 
       let departmentIds: readonly string[] = [];
       if (Array.isArray(decodedToken.departmentIds)) {

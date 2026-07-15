@@ -2699,12 +2699,11 @@ async function runSingleOwnerTests(getCleanApp: () => Promise<any>) {
     }
 
     // SU-AUTH-09: Không log raw token
+    const originalConsoleWarn = console.warn;
+    const originalConsoleError = console.error;
+    const logs: string[] = [];
     try {
       const app = await getCleanApp();
-      
-      const originalConsoleWarn = console.warn;
-      const originalConsoleError = console.error;
-      const logs: string[] = [];
       
       console.warn = (...args: any[]) => {
         logs.push(args.join(" "));
@@ -2716,17 +2715,17 @@ async function runSingleOwnerTests(getCleanApp: () => Promise<any>) {
       const res = await request(app)
         .get("/api/admin/modules/states")
         .set("Authorization", "Bearer SECRET_RAW_TOKEN_MUST_NOT_APPEAR");
-        
-      console.warn = originalConsoleWarn;
-      console.error = originalConsoleError;
 
       const fullLog = logs.join(" ");
       assert(res.status === 401, "Token không hợp lệ phải bị từ chối 401");
       assert(!fullLog.includes("SECRET_RAW_TOKEN_MUST_NOT_APPEAR"), "SU-AUTH-09: Raw token bị lộ trong log!");
-      assert(fullLog.includes("req-") || fullLog.includes("requestId") || true, "Có requestId trong log lỗi (hoặc middleware tự sinh)");
+      assert(fullLog.includes("RequestId:") || fullLog.includes("requestId") || fullLog.includes("req-"), "Có requestId trong log lỗi (hoặc middleware tự sinh)");
       
     } catch (error) {
       assert(false, `SU-AUTH-09 Thất bại: ${error}`);
+    } finally {
+      console.warn = originalConsoleWarn;
+      console.error = originalConsoleError;
     }
 
     // SU-AUTH-11: Không lộ owner UID trong runtime config
@@ -2749,6 +2748,69 @@ async function runSingleOwnerTests(getCleanApp: () => Promise<any>) {
       assert(res.status === 200, "SU-AUTH-10: Development mock mode hoạt động có kiểm soát và chấp nhận UID owner chính xác.");
     } catch (error) {
       assert(false, `SU-AUTH-10 Thất bại: ${error}`);
+    }
+
+    // SU-AUTH-12: Owner UID hợp lệ, email verified, không có role claim → /api/auth/session trả role admin & /api/admin/modules/states trả 200
+    try {
+      const app = await getCleanApp();
+      setMockTokenVerifier(async (token) => {
+        if (token === "owner-no-role-token") {
+          return {
+            uid: "owner-uid-12345",
+            email: "owner@qlcv.local",
+            email_verified: true,
+            name: "Valid Owner No Role"
+            // No custom claim 'role'
+          };
+        }
+        throw new Error("Invalid token");
+      });
+
+      // 1. Check /api/auth/session
+      const resSession = await request(app)
+        .get("/api/auth/session")
+        .set("Authorization", "Bearer owner-no-role-token");
+      
+      assert(resSession.status === 200, "SU-AUTH-12: Session API phải trả về 200 cho owner.");
+      assert(resSession.body.user.role === "admin", "SU-AUTH-12: Owner không có role claim phải tự động nhận quyền admin.");
+
+      // 2. Check /api/admin/modules/states
+      const resManage = await request(app)
+        .get("/api/admin/modules/states")
+        .set("Authorization", "Bearer owner-no-role-token");
+      
+      assert(resManage.status === 200, "SU-AUTH-12: Owner tự động có quyền admin phải gọi được API admin modules.");
+    } catch (error) {
+      assert(false, `SU-AUTH-12 Thất bại: ${error}`);
+    } finally {
+      setMockTokenVerifier(null);
+    }
+
+    // SU-AUTH-13: UID khác có role claim admin → vẫn bị 403
+    try {
+      const app = await getCleanApp();
+      setMockTokenVerifier(async (token) => {
+        if (token === "attacker-admin-token") {
+          return {
+            uid: "attacker-uid",
+            email: "attacker@qlcv.local",
+            email_verified: true,
+            role: "admin",
+            name: "Attacker Admin"
+          };
+        }
+        throw new Error("Invalid token");
+      });
+
+      const res = await request(app)
+        .get("/api/admin/modules/states")
+        .set("Authorization", "Bearer attacker-admin-token");
+      
+      assert(res.status === 403, "SU-AUTH-13: UID khác dù có admin claim vẫn phải bị từ chối 403.");
+    } catch (error) {
+      assert(false, `SU-AUTH-13 Thất bại: ${error}`);
+    } finally {
+      setMockTokenVerifier(null);
     }
 
   } finally {

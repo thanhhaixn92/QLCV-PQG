@@ -59,7 +59,11 @@ export async function createServer() {
     const requestId = req.requestId || "unknown";
     
     if (err instanceof AppError) {
-      logger.warn(`AppError [${err.code}]: ${err.message}`, { requestId, code: err.code });
+      if (err.code === "AUTH_REQUIRED") {
+        logger.info(`AppError [${err.code}]: ${err.message}`, { requestId, code: err.code });
+      } else {
+        logger.warn(`AppError [${err.code}]: ${err.message}`, { requestId, code: err.code });
+      }
       const json = err.toJSON();
       if (!json.error.requestId) {
         json.error.requestId = requestId;
