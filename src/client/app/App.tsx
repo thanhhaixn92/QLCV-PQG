@@ -5,6 +5,7 @@ import { runtimeConfigClient } from "../services/runtimeConfigClient";
 import { apiClient } from "../services/apiClient";
 import { LoadingState } from "../components/LoadingState";
 import { OwnerAccessDeniedPage } from "../shell/OwnerAccessDeniedPage";
+import { signOutUser } from "../infrastructure/firebase/firebaseAuth";
 import { 
   ToggleLeft, ToggleRight, Radio, RefreshCw, Cpu, Activity, History, 
   AlertTriangle, X, Copy, ShieldAlert, Lock, ShieldCheck, CheckCircle2,
@@ -31,7 +32,8 @@ export function App() {
   const [audits, setAudits] = useState<AuditLogItem[]>([]);
   const [isMockAllowedOnServer, setIsMockAllowedOnServer] = useState(true);
   const [appMode, setAppMode] = useState<string | undefined>(undefined);
-  const [appOwnerUid, setAppOwnerUid] = useState<string | undefined>(undefined);
+  const [authStatus, setAuthStatus] = useState<"loading" | "authenticated" | "denied">("loading");
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | undefined>(undefined);
   
   // Interactive audit details modal
   const [selectedAudit, setSelectedAudit] = useState<AuditLogItem | null>(null);
@@ -43,7 +45,42 @@ export function App() {
       const mockAllowed = config.allowMockAuth === true;
       setIsMockAllowedOnServer(mockAllowed);
       setAppMode(config.appMode);
-      setAppOwnerUid(config.appOwnerUid);
+
+      let isAuthDenied = false;
+      if (config.appMode === "single-owner") {
+        try {
+          const session = await apiClient.request<{ authenticated: boolean; user: any }>("/api/auth/session");
+          setCurrentUserEmail(session.user?.email || "Unknown");
+          setAuthStatus("authenticated");
+        } catch (error: any) {
+          if (error.message && (error.message.includes("OWNER_ACCESS_DENIED") || error.message.includes("Chỉ owner mới có quyền"))) {
+            setAuthStatus("denied");
+            isAuthDenied = true;
+            
+            // Try to figure out current email from localStorage if mock
+            if (typeof localStorage !== "undefined") {
+              const stored = localStorage.getItem("qlcv_mock_user");
+              if (stored) {
+                try {
+                  const parsed = JSON.parse(stored);
+                  if (parsed && parsed.email) setCurrentUserEmail(parsed.email);
+                } catch { /* ignore */ }
+              }
+            }
+          } else {
+             // 401 Unauthorized or other error
+             setAuthStatus("denied");
+             isAuthDenied = true;
+          }
+        }
+      } else {
+         setAuthStatus("authenticated");
+      }
+      
+      if (isAuthDenied) {
+        setLoading(false);
+        return;
+      }
 
       const modulesMap: Record<string, boolean> = {};
       for (const [id, value] of Object.entries(config.modules)) {
@@ -516,20 +553,25 @@ export function App() {
     }
   }
 
-  const isSingleOwnerMode = appMode === "single-owner";
-  const isAccessDenied = isSingleOwnerMode && appOwnerUid && currentUid !== appOwnerUid;
-
-  if (isAccessDenied) {
+  if (appMode === "single-owner" && authStatus === "denied") {
     return (
       <OwnerAccessDeniedPage
-        ownerUid={appOwnerUid!}
-        currentUid={currentUid}
+        currentEmail={currentUserEmail}
         allowMockAuth={isMockAllowedOnServer}
         onSetRole={(newRole) => {
           handleRoleChange(newRole);
         }}
-        onLogout={() => {
-          handleRoleChange("viewer");
+        onLogout={async () => {
+          // Xóa local mock token nếu đang dùng
+          if (typeof localStorage !== "undefined") {
+            localStorage.removeItem("qlcv_mock_user");
+          }
+          try {
+            await signOutUser();
+          } catch (e) {
+            console.error("Failed to sign out:", e);
+          }
+          window.location.reload();
         }}
       />
     );

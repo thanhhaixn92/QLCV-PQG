@@ -20,6 +20,23 @@ export function registerCoreRoutes(router: Router) {
   router.get("/firebase/health", firebaseHealthRoute);
   router.get("/runtime-config", runtimeConfigRoute);
 
+  // Session route (requires authentication, relies on single-owner guard in middleware if appMode="single-owner")
+  router.get(
+    "/auth/session",
+    authenticateRequest,
+    (req: AppRequest, res: Response) => {
+      res.json({
+        authenticated: true,
+        authorized: true,
+        user: {
+          uid: req.user?.uid,
+          email: req.user?.email,
+          role: req.user?.role
+        }
+      });
+    }
+  );
+
   // Protected administration routes
   router.get(
     "/admin/modules/states",

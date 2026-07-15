@@ -2,16 +2,14 @@ import React from "react";
 import { ShieldAlert, LogOut, Key, UserCheck, RefreshCw } from "lucide-react";
 
 interface OwnerAccessDeniedPageProps {
-  ownerUid: string;
-  currentUid: string;
+  currentEmail?: string;
   allowMockAuth?: boolean;
   onSetRole?: (role: string) => void;
   onLogout?: () => void;
 }
 
 export function OwnerAccessDeniedPage({
-  ownerUid,
-  currentUid,
+  currentEmail,
   allowMockAuth = false,
   onSetRole,
   onLogout
@@ -37,28 +35,18 @@ export function OwnerAccessDeniedPage({
           </span>
           
           <p className="text-sm text-slate-500 mb-6 leading-relaxed max-w-sm">
-            Hệ thống đang vận hành ở chế độ bảo mật nghiêm ngặt <strong>Đơn Chủ Sở Hữu (Single-Owner)</strong>. Chỉ tài khoản duy nhất khớp với UID đăng ký mới được quyền truy cập dữ liệu nghiệp vụ.
+            Hệ thống đang vận hành ở chế độ bảo mật nghiêm ngặt <strong>Đơn Chủ Sở Hữu (Single-Owner)</strong>. Chỉ tài khoản duy nhất đã đăng ký mới được quyền truy cập dữ liệu nghiệp vụ.
           </p>
           
           {/* Diagnostic Details Box */}
           <div className="w-full bg-slate-50 border border-slate-100 rounded-xl p-4 mb-6 space-y-3 font-mono text-left">
             <div>
               <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <UserCheck size={12} className="text-blue-500" />
-                UID Chủ sở hữu yêu cầu
-              </div>
-              <div className="text-xs font-bold text-blue-600 select-all truncate bg-white px-2.5 py-1.5 rounded border border-slate-200 shadow-2xs">
-                {ownerUid}
-              </div>
-            </div>
-            
-            <div>
-              <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
                 <Key size={12} className="text-red-500" />
-                UID tài khoản hiện tại của bạn
+                Tài khoản hiện tại của bạn
               </div>
               <div className="text-xs font-bold text-red-600 select-all truncate bg-white px-2.5 py-1.5 rounded border border-slate-200 shadow-2xs">
-                {currentUid || "Chưa xác thực / Anonymous"}
+                {currentEmail || "Chưa xác thực / Anonymous"}
               </div>
             </div>
           </div>
@@ -89,12 +77,6 @@ export function OwnerAccessDeniedPage({
                       {role.toUpperCase()} (mock-uid-{role})
                     </option>
                   ))}
-                  {/* Option specifically designed to match the appOwnerUid if provided */}
-                  {ownerUid && !ownerUid.startsWith("mock-uid-") && (
-                    <option value={`owner-custom:${ownerUid}`}>
-                      OWNER (Sử dụng UID đích)
-                    </option>
-                  )}
                 </select>
               </div>
             </div>
@@ -106,7 +88,7 @@ export function OwnerAccessDeniedPage({
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 transition rounded-xl shadow-xs cursor-pointer w-full"
             >
               <LogOut size={14} />
-              Quay lại Đăng nhập / Reset vai trò
+              Quay lại Đăng nhập / Đăng xuất
             </button>
           )}
         </div>

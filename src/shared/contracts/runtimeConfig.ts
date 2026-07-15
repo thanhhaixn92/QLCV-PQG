@@ -5,7 +5,6 @@ export interface RuntimeConfig {
   environment: string;
   allowMockAuth?: boolean;
   appMode?: string;
-  appOwnerUid?: string;
   modules: Record<string, {
     state: ModuleState;
   }>;
